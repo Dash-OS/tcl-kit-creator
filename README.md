@@ -10,11 +10,13 @@ both packages and the kit itself.
 
 ### Changes from Original
 
- 1. Ability to define KITCREATOR_BOOT env variable to provide a boot script
-    that will run any time the executable boots.
- 2. Ability to define separate repo name, package names, and lib names for situations
+ 1. Ability for packages and/or the user to provide boot scripts which will be run any time the executable is ran.
+ 2. Cleaned up the logging done during build time.
+ 3. `kitcreator clean` will now clean any custom build scripts as well as the included list.
+ 4. Restructured the directories to make it friendlier to customizations and future features.
+ 5. Ability to define separate repo name, package names, and lib names for situations
     that an extension does not use the same name across the board (see [tclparser build script](https://github.com/Dash-OS/tcl-kit-creator/blob/master/tclparser/build.sh)).
- 3. Added build scripts for multiple extensions.  Specifically:
+ 6. Added build scripts for multiple extensions.  Specifically:
    - [tcl-modules](https://github.com/Dash-OS/tcl-modules) (include [tcl-cluster](https://github.com/Dash-OS/tcl-cluster) and [tcl-task-manager](https://github.com/Dash-OS/tcl-task-manager)) - tcl-modules is a `Dash OS` maintained repo of micro packages.  These are generally small in size but provide essential tools to enhance your tcl programming experience.
    - [tcl-signal](https://github.com/Dash-OS/tcl-signal) - This extension adds dynamically loadable signal handling to Tcl/Tk scripts.
   It provides a very limited subset of the functionality of tclX (just the
