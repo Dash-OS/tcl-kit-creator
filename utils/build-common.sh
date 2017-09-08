@@ -346,15 +346,6 @@ _EOF_
 	return 0
 }
 
-function success() {
-  if [ -d "boot" ]; then
-    # script requesting boot scripts
-    # be added
-    mkdir -p "${TMP_DIRECTORY}/boot"
-    cp -rf boot/*.tcl "${TMP_DIRECTORY}/boot/"
-  fi
-}
-
 function die() {
 	local msg
 
