@@ -11,6 +11,8 @@
 
 export KITCREATOR_PKGS="tcl-modules tcc4tcl tuapi socketserver signal tclparser tdom yajltcl rl_json udp mk4tcl tcllib unix_sockets tls";
 
+KC_PATH=$(pwd)
+
 # Fixes bug with cross-compiling for older gcc versions
 export TCLVERS="fossil_core-8-6-branch";
 
@@ -45,7 +47,7 @@ KITCREATOR_STORAGE='cvfs'
 # KITCREATOR_STORAGE='auto'
 
 #### Obsfucate the kit?
-# KC_EXTRA_ARGS="${KC_EXTRA_ARGS} --with-obsfucated-cvfs"
+KC_EXTRA_ARGS="${KC_EXTRA_ARGS} --with-obsfucated-cvfs"
 
 #### Custom kit.rc
 ### If desired, you may specify a custom kit.rc file
@@ -54,7 +56,7 @@ KITCREATOR_STORAGE='cvfs'
 
 #### Custom Icon
 ### Specify a custom .ico file to use if desired
-export KITCREATOR_ICON="${KC_PATH}/resources/dashkit.ico"
+export KITCREATOR_ICON="${KC_PATH}/resources/kiticon.ico"
 
 #### Custom Boot File
 ### If you want to run preliminary code whenever
@@ -66,6 +68,10 @@ export KITCREATOR_BOOT="${KC_PATH}/resources/boot.tcl"
 ### scripts if needed
 # CONFIGUREXTRA=''
 
-./kitcreator $TCLVERS \
+# ./kitcreator $TCLVERS \
+#   --enable-kit-storage="${KITCREATOR_STORAGE}" \
+#   $KC_EXTRA_ARGS
+
+./kitcreator retry \
   --enable-kit-storage="${KITCREATOR_STORAGE}" \
   $KC_EXTRA_ARGS

@@ -3,7 +3,7 @@ proc tclInit {} {
 
 	global auto_path tcl_library tcl_libPath
 	global tcl_version tcl_rcFileName
-  
+
 	set mountpoint [subst "$::TCLKIT_MOUNTPOINT_VAR"]
 
 	# Resolve symlinks
@@ -20,7 +20,7 @@ proc tclInit {} {
 				# must use raw MetaKit calls because VFS is not yet in place
 				set d [mk::select exe.dirs parent 0 name lib]
 				set d [mk::select exe.dirs parent $d name vfs]
-    
+
 				foreach x {vfsUtils vfslib mk4vfs} {
 					set n [mk::select exe.dirs!$d.files name $x.tcl]
 					set s [mk::get exe.dirs!$d.files!$n contents]
@@ -48,7 +48,7 @@ proc tclInit {} {
 							# Preserve our working "::vfs::zip" implementation
 							# so we can replace it after the stub is replaced
 							# from vfsUtils
-							# The correct implementation will be provided by vfslib, 
+							# The correct implementation will be provided by vfslib,
 							# but only if we can read it
 							rename ::vfs::zip ::vfs::zip_impl
 						}
@@ -139,7 +139,7 @@ proc tclInit {} {
 		# loaded before this is run causing the root VFS to break
 		catch { clock scan }
 	}
-  
+
 	# load config settings file if present
 	namespace eval ::vfs { variable tclkit_version 1 }
 	catch { uplevel #0 [list source [file join $mountpoint config.tcl]] }
@@ -150,7 +150,7 @@ proc tclInit {} {
 
 	# Perform expected initialization
 	uplevel #0 [list source [file join $tcl_library init.tcl]]
-  
+
 	# reset auto_path, so that init.tcl's search outside of tclkit is cancelled
 	set auto_path $tcl_libPath
 
@@ -163,7 +163,7 @@ proc tclInit {} {
 	if {$::TCLKIT_TYPE == "kitdll"} {
 		# Set a maximum seek to avoid reading the entire file looking for a
 		# zip header
-		catch { 
+		catch {
 			package require vfs::zip
 			set ::zip::max_header_seek 8192
 		}
@@ -179,7 +179,6 @@ proc tclInit {} {
 				}
 			}
 		}
-
 
 		## Mount the VFS from executable
 		if {[info exists ::TCLKIT_INITVFS]} {
@@ -199,4 +198,13 @@ proc tclInit {} {
 	unset -nocomplain ::TCLKIT_MOUNTPOINT ::TCLKIT_VFSSOURCE ::TCLKIT_MOUNTPOINT_VAR ::TCLKIT_VFSSOURCE_VAR
 	unset -nocomplain ::tclKitStorage ::tclKitStorage_fd ::tclKitFilename
 	unset -nocomplain ::tclkit_system_encoding
+
+  if {[file exists [file join $mountpoint boot-extra.tcl]]} {
+    uplevel #0 [list \
+      source [file join \
+        $mountpoint boot-extra.tcl
+      ]
+    ]
+  }
+
 }

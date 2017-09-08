@@ -1,5 +1,6 @@
 # BuildCompatible: KitCreator
 
+### The name of the library
 pkg='tcl-parser'
 
 url_prefix="https://github.com/Dash-OS/${pkg}"

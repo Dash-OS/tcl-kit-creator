@@ -38,26 +38,27 @@ KITCREATOR_ALLPKGS="kitsh tcl tclvfs zlib tk itcl mk4tcl thread dbus tls tclx tc
 
 # Always rebuild kitsh
 rm -f "kitsh/.success"
-for pkg in ${KITCREATOR_ALLPKGS} ${KITCREATOR_PKGS}; do
-	if [ "${mode}" != "retry" -o ! -f "${pkg}/.success" ]; then
-		rm -f "${pkg}/build.log" "${pkg}/.success"
-		rm -rf "${pkg}/out" "${pkg}/inst" "${pkg}/build"
-
-		rm -rf "${pkg}/src"/tmp-*
-	fi
-
-	if [ "${mode}" = "distclean" ]; then
-		rm -rf "${pkg}/src"
-	fi
-done
-
-# We're all done if we're in clean or distclean mode
 if [ "${mode}" = "clean" -o "${mode}" = "distclean" ]; then
-	rm -f tclkit-*
-	rm -f libtclkit*.*
 
-	exit 0
+  for pkg in $(echo ./*); do
+    if [ -d "${pkg}" -a -f "${pkg}/build.sh" ]; then
+      printf "%-10s | %-20s | " "  clean... " "  $pkg"
+      rm -f "${pkg}/build.log" "${pkg}/.success"
+      rm -rf "${pkg}/out" "${pkg}/inst" "${pkg}/build"
+      rm -rf "${pkg}/src"/tmp-*
+      if [ "${mode}" = "distclean" ]; then
+        printf "%-20s |" "  clean cache..."
+        rm -rf "${pkg}/src"
+      fi
+      printf "  done!\n"
+    fi
+  done
+
+  rm -f tclkit-*
+  rm -f libtclkit*.*
+  exit 0
 fi
+
 
 # Add packages implied by the additional arguments
 if [ -z "${KITCREATOR_PKGS}" ]; then

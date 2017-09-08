@@ -1,114 +1,160 @@
 #! /usr/bin/env bash
 
-# BuildCompatible: KitCreator
+if [ ! -f 'build.sh' ]; then
+	echo 'ERROR: This script must be run from the directory it is in' >&2
 
-version="1.5"
-url="https://github.com/flightaware/yajl-tcl/archive/v${version}.tar.gz"
-sha256='-'
+	exit 1
+fi
+if [ -z "${TCLVERS}" ]; then
+	echo 'ERROR: The TCLVERS environment variable is not set' >&2
 
-function buildYAJL() {
-	local version url hash
-	local archive yajlbuilddir
+	exit 1
+fi
 
-	version='2.1.0'
-	url="http://github.com/lloyd/yajl/tarball/${version}"
-	hash='-'
+YAJLTCLVERS="1.6.2"
+YAJLVERS='2.1.0'
+SRC="src/yajltcl-${YAJLTCLVERS}.tar.gz"
+YAJLSRC="src/yajl-${YAJLVERS}.tar.gz"
+SRCURL="https://github.com/flightaware/yajl-tcl/archive/v${YAJLTCLVERS}.tar.gz"
+SRCHASH='-'
+YAJLSRCURL="http://github.com/lloyd/yajl/tarball/${YAJLVERS}"
+YAJLSRCHASH='-'
+BUILDDIR="$(pwd)/build/yajl-tcl-${YAJLTCLVERS}"
+YAJLBUILDDIR="$(pwd)/build/lloyd-yajl-66cb08c"
+OUTDIR="$(pwd)/out"
+INSTDIR="$(pwd)/inst"
+PATCHDIR="$(pwd)/patches"
 
-	yajlbuilddir="$(pwd)/lloyd-yajl-66cb08c"
-	archive="${pkgdir}/src/yajl-${version}.tar.gz"
+export YAJLTCLVERS SRC SRCURL BUILDDIR OUTDIR INSTDIR PATCHDIR
 
-	echo " *** Building YAJL v${version}" >&2
+# Set configure options for this sub-project
+LDFLAGS="${LDFLAGS} ${KC_YAJLTCL_LDFLAGS}"
+CFLAGS="${CFLAGS} ${KC_YAJLTCL_CFLAGS}"
+CPPFLAGS="${CPPFLAGS} ${KC_YAJLTCL_CPPFLAGS}"
+LIBS="${LIBS} ${KC_YAJLTCL_LIBS}"
+export LDFLAGS CFLAGS CPPFLAGS LIBS
 
-	if [ ! -e "${pkgdir}/${archive}" ]; then
-		"${_download}" "${url}" "${archive}" "${hash}" || return 1
+rm -rf 'build' 'out' 'inst'
+mkdir 'build' 'out' 'inst' || exit 1
+
+if [ ! -d 'buildsrc' ]; then
+	mkdir 'src' >/dev/null 2>/dev/null
+
+	if [ ! -f "${SRC}" ]; then
+		download "${SRCURL}" "${SRC}" "${SRCHASH}" || exit 1
 	fi
 
+	if [ ! -f "${YAJLSRC}" ]; then
+		download "${YAJLSRCURL}" "${YAJLSRC}" "${YAJLSRCHASH}" || exit 1
+	fi
+fi
+
+(
+	cd 'build' || exit 1
+
+	if [ ! -d '../buildsrc' ]; then
+		gzip -dc "../${SRC}" | tar -xf -
+		gzip -dc "../${YAJLSRC}" | tar -xf -
+	else
+		cp -rp ../buildsrc/* './'
+	fi
+
+	# Build YAJL
 	(
-		gzip -dc "${archive}" | tar -xf - || exit 1
-		cd "${yajlbuilddir}" || exit 1
-
-		if [ "${KC_CROSSCOMPILE}" = '1' ]; then
-			case "${KC_CROSSCOMPILE_HOST_OS}" in
-				*-mingw32|*-mingw32msvc|*-mingw64)
-					cmake_system_name='Windows'
-					;;
-				*)
-					cmake_system_name="$(
-						echo "${KC_CROSSCOMPILE_HOST_OS}" | \
-						cut -f 3 -d - | \
-						sed 's@[0-9\.]*$@@' | \
-						awk '{ f = substr($1, 1, 1); r = substr($1, 2); print toupper(f) tolower(r) }' | \
-						sed 's@bsd$@BSD@;s@^Aix@AIX@;s@^Hpux@HPUX@'
-					)"
-					;;
-			esac
-
-			cmake_extra=(
-				-DCMAKE_SYSTEM_NAME="${cmake_system_name}"
-				-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
-				-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
-				-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
-				-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY
-				-DCMAKE_CROSSCOMPILING=1
-			)
-		else
-			cmake_extra=()
-		fi
-
-		if [ -n "${CC}" ]; then
-			CC_path="$(echo "${CC}" | cut -f 1 -d ' ')"
-			CC_flags="$(echo "${CC}" | cut -f 2- -d ' ')"
-
-			cmake_extra=("${cmake_extra[@]}" -DCMAKE_C_COMPILER="${CC_path}")
-			if [ -n "${CC_flags}" ]; then
-				cmake_extra=("${cmake_extra[@]}" -DCMAKE_C_FLAGS="${CC_flags}")
-			fi
-		fi
-
-		if [ -n "${CXX}" ]; then
-			CXX_path="$(echo "${CXX}" | cut -f 1 -d ' ')"
-			CXX_flags="$(echo "${CXX}" | cut -f 2- -d ' ')"
-
-			cmake_extra=("${cmake_extra[@]}" -DCMAKE_CXX_COMPILER="${CXX_path}")
-			if [ -n "${CXX_flags}" ]; then
-				cmake_extra=("${cmake_extra[@]}" -DCMAKE_CXX_FLAGS="${CXX_flags}")
-			fi
-		fi
-
-		cmake \
-			-DCMAKE_INSTALL_PREFIX="${yajlbuilddir}/INST" \
-			-DBUILD_SHARED_LIBS=OFF \
-			-DBUILD_STATIC_LIBS=ON \
-			"${cmake_extra[@]}" . || exit 1
-
-		${MAKE:-make} || exit 1
-
-		${MAKE:-make} install || exit 1
-
-		rm -f INST/lib/*.so*
+		cd "${YAJLBUILDDIR}" || exit 1
+		./configure -p "$(pwd)/INST" || exit 1
+		make install || exit 1
+		#rm -f INST/lib/*.so*
 		mv INST/lib/libyajl_s.a INST/lib/libyajl.a || exit 1
-	) || return 1
+	) || exit 1
 
 	# Include YAJL's build in our pkg-config path
-	PKG_CONFIG_PATH="${yajlbuilddir}/INST/share/pkgconfig"
-	YAJL_CFLAGS="-I${yajlbuilddir}/INST/include -I${YAJLBUILDDIR}/INST/include/yajl"
+	PKG_CONFIG_PATH="${YAJLBUILDDIR}/INST/share/pkgconfig"
+	YAJL_CFLAGS="-I${YAJLBUILDDIR}/INST/include -I${YAJLBUILDDIR}/INST/include/yajl"
 	export PKG_CONFIG_PATH YAJL_CFLAGS
-}
 
-function preconfigure() {
-	# Build YAJL
-	buildYAJL || return 1
+	# Build YAJL-TCL
+	cd "${BUILDDIR}" || exit 1
 
 	# YAJLTCL releases are incomplete -- they lack a configure script
 	autoconf || exit 1
-}
 
-function postinstall() {
-	local file dir
+	# Try to build as a shared object if requested
+	if [ "${STATICYAJLTCL}" = "0" ]; then
+		tryopts="--enable-shared --disable-shared"
+	elif [ "${STATICYAJLTCL}" = "-1" ]; then
+		tryopts="--enable-shared"
+	else
+		tryopts="--disable-shared"
+	fi
 
-	find "${installdir}" -type f -name '*.a' | head -n 1 | sed 's@/[^/]*$@@' | while IFS='' read -r dir; do
-		find "${workdir}" -type f -name 'libyajl.a' | while IFS='' read -r file; do
-			cp "${file}" "${dir}/zz-$(basename "${file}")" || return 1
-		done
+	SAVE_CFLAGS="${CFLAGS}"
+	for tryopt in $tryopts __fail__; do
+		if [ "${tryopt}" = "__fail__" ]; then
+			exit 1
+		fi
+		# Clean up, if needed
+		make distclean >/dev/null 2>/dev/null
+		rm -rf "${INSTDIR}"
+		mkdir "${INSTDIR}"
+
+		if [ "${tryopt}" == "--enable-shared" ]; then
+			isshared="1"
+		else
+			isshared="0"
+		fi
+
+		# If build a static YAJLTCL for KitDLL, ensure that we use PIC
+		# so that it can be linked into the shared object
+		if [ "${isshared}" = "0" -a "${KITTARGET}" = "kitdll" ]; then
+			CFLAGS="${SAVE_CFLAGS} -fPIC"
+		else
+			CFLAGS="${SAVE_CFLAGS}"
+		fi
+		export CFLAGS
+
+		if [ "${isshared}" = '0' ]; then
+			sed 's@USE_TCL_STUBS@XXX_TCL_STUBS@g' configure > configure.new
+		else
+			sed 's@XXX_TCL_STUBS@USE_TCL_STUBS@g' configure > configure.new
+		fi
+		cat configure.new > configure
+		rm -f configure.new
+
+		(
+			echo "Running: ./configure $tryopt --prefix=\"${INSTDIR}\" --exec-prefix=\"${INSTDIR}\" --libdir=\"${INSTDIR}/lib\" --with-tcl=\"${TCLCONFIGDIR}\" ${CONFIGUREEXTRA}"
+			./configure $tryopt --prefix="${INSTDIR}" --exec-prefix="${INSTDIR}" --libdir="${INSTDIR}/lib" --with-tcl="${TCLCONFIGDIR}" ${CONFIGUREEXTRA}
+
+			echo "Running: ${MAKE:-make} tcllibdir=\"${INSTDIR}/lib\""
+			${MAKE:-make} tcllibdir="${INSTDIR}/lib" || exit 1
+
+			echo "Running: ${MAKE:-make} tcllibdir=\"${INSTDIR}/lib\" install"
+			${MAKE:-make} tcllibdir="${INSTDIR}/lib" install || exit 1
+		) || continue
+
+		if [ "${isshared}" = '0' ]; then
+			# Copy static libyajl to INSTDIR
+			mkdir -p "${INSTDIR}/lib/deps"
+			cp "${YAJLBUILDDIR}/INST/lib/libyajl.a" "${INSTDIR}/lib/zz-libyajl.a" || exit 1
+		fi
+
+		break
 	done
-}
+
+	# Create pkgIndex if needed
+	if [ ! -e "${INSTDIR}/lib/yajltcl${YAJLTCLVERS}/pkgIndex.tcl" ]; then
+		cat << _EOF_ > "${INSTDIR}/lib/yajltcl${YAJLTCLVERS}/pkgIndex.tcl"
+package ifneeded yajltcl ${YAJLTCLVERS} \
+    "[list load {} yajltcl]; \
+    [list source [file join \$dir yajl.tcl]]"
+_EOF_
+	fi
+
+	# Install files needed by installation
+	cp -r "${INSTDIR}/lib" "${OUTDIR}" || exit 1
+	find "${OUTDIR}" -name '*.a' -type f | xargs -n 1 rm -f --
+
+	exit 0
+) || exit 1
+
+exit 0

@@ -49,6 +49,14 @@ function download() {
 		return 0
 	fi
 
+  if [ -z "${pkg}" ]; then
+    pkg="${pkg_name}"
+  fi
+
+  if [ -z "${version}" ]; then
+    version="${pkg_version}"
+  fi
+
 	if [ -n "${url}" ]; then
 		# Determine type of file
 		archivetype="$(echo "${url}" | sed 's@\?.*$@@')"
@@ -60,8 +68,8 @@ function download() {
 				archivetype="$(echo "${archivetype}" | sed 's@^.*\.@@')"
 				;;
 		esac
-
-		pkgarchive="${archivedir}/${pkg}-${version}.${archivetype}"
+    pkg_archive_name="${pkg}-${version}"
+		pkgarchive="${archivedir}/${pkg_archive_name}.${archivetype}"
 		mkdir "${archivedir}" >/dev/null 2>/dev/null
 	fi
 
@@ -91,28 +99,53 @@ function extract() {
 
 			cd "${workdir}" || exit 1
 
-			case "${pkgarchive}" in
-				*.tar.gz|*.tgz)
-					gzip -dc "${pkgarchive}" | tar -xf - || exit 1
-					;;
-				*.tar.bz2|*.tbz|*.tbz2)
-					bzip2 -dc "${pkgarchive}" | tar -xf - || exit 1
-					;;
-				*.tar.xz|*.txz)
-					xz -dc "${pkgarchive}" | tar -xf - || exit 1
-					;;
-				*.zip)
-					unzip "${pkgarchive}" || exit 1
-					;;
-			esac
+      find "${archivedir}" \
+        -type f \( -name "*.tar.gz" -o -name "*.tgz" \) \
+        -exec sh -c "gzip -dc '{}' | tar -xf -" \;
+
+      find "${archivedir}" \
+        -type f \( -name "*.tar.bz2" -o -name "*.tbz" -o -name "*.bz2" \) \
+        -exec sh -c "bzip2 -dc '{}' | tar -xf -" \;
+
+      find "${archivedir}" \
+        -type f \( -name "*.tar.xz" -o -name "*.txz" \) \
+        -exec sh -c "xz -dc '{}' | tar -xf -" \;
+
+      find "${archivedir}" \
+        -type f \( -name "*.zip" \) \
+        -exec unzip '{}' \;
+
+			# case "${pkgarchive}" in
+			# 	*.tar.gz|*.tgz)
+			# 		gzip -dc "${pkgarchive}" | tar -xf - || exit 1
+			# 		;;
+			# 	*.tar.bz2|*.tbz|*.tbz2)
+			# 		bzip2 -dc "${pkgarchive}" | tar -xf - || exit 1
+			# 		;;
+			# 	*.tar.xz|*.txz)
+			# 		xz -dc "${pkgarchive}" | tar -xf - || exit 1
+			# 		;;
+			# 	*.zip)
+			# 		unzip "${pkgarchive}" || exit 1
+			# 		;;
+			# esac
 
 			shopt -s dotglob
-			dir="$(echo ./*)"
-			if [ -d "${dir}" ]; then
-				mv "${dir}"/* . || exit 1
 
-				rmdir "${dir}" || exit 1
-			fi
+      if [ -d "${pkg_archive_name}" ]; then
+        mv "${pkg_archive_name}"/* . || exit 1
+        rmdir "${pkg_archive_name}"  || exit 1
+      elif [ -d "${pkg_name}" ]; then
+        mv "${pkg_name}"/* . || exit 1
+        rmdir "${pkg_name}"  || exit 1
+      elif [ -d "${pkg_lib_name}" ]; then
+        mv "${pkg_lib_name}"/* . || exit 1
+        rmdir "${pkg_lib_name}"  || exit 1
+      elif [ -d ./*"${pkg}"* ]; then
+        mv ./"${pkg}"*/* . || exit 1
+        rmdir ./"${pkg}"* || exit 1
+      fi
+
 
 			exit 0
 		) || return 1
@@ -278,13 +311,29 @@ function createruntime() {
 		tclpkgversion="${version}"
 	fi
 
+  ##### >> FORK START
+  # Use previous vars when possible to maintain backwards
+  # compatibility
+  if [ -z "${pkg_name}" ]; then
+    pkg_name="${tclpkg}"
+  fi
+
+  if [ -z "${pkg_version}" ]; then
+    pkg_version="${tclpkgversion}"
+  fi
+
+  if [ -z "${pkg_lib_name}" ]; then
+    pkg_lib_name="${pkg_name}"
+  fi
+  ##### >> FORK END
+
 	runtimelibdir="${runtimedir}/lib"
 
 	if [ "${pkg_configure_shared_build}" = '0' ]; then
 		find "${runtimelibdir}" -name '*.a' | sed 's@/[^/]*\.a$@@' | head -n 1 | while IFS='' read -r runtimepkgdir; do
 			if [ ! -e "${runtimepkgdir}/pkgIndex.tcl" ]; then
 				cat << _EOF_ > "${runtimepkgdir}/pkgIndex.tcl"
-package ifneeded ${tclpkg} ${tclpkgversion} [list load {} ${tclpkg}]
+package ifneeded ${pkg_name} ${pkg_version} [list load {} ${pkg_lib_name}]
 _EOF_
 			fi
 		done
@@ -294,7 +343,7 @@ _EOF_
 			pkglibfile="$(echo "${pkglibfile}" | sed 's@^.*/@@')"
 			if [ ! -e "${runtimepkgdir}/pkgIndex.tcl" ]; then
 				cat << _EOF_ > "${runtimepkgdir}/pkgIndex.tcl"
-package ifneeded ${tclpkg} ${tclpkgversion} [list load [file join \$dir ${pkglibfile}]]
+package ifneeded ${pkg_name} ${pkg_version} [list load [file join \$dir ${pkg_lib_name}]]
 _EOF_
 			fi
 		done

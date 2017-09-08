@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+i #! /usr/bin/env bash
 
 if [ ! -f 'build.sh' ]; then
 	echo 'ERROR: This script must be run from the directory it is in' >&2
@@ -72,6 +72,8 @@ mkdir 'out' 'inst' || exit 1
 
 	## Install "boot.tcl"
 	cp 'boot.tcl' 'starpack.vfs/'
+
+  cp "${KITCREATOR_BOOT}" 'starpack.vfs/boot-extra.tcl'
 
 	## Install "tclkit.ico"
 	cp 'tclkit.ico' 'starpack.vfs/'
