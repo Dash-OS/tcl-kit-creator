@@ -12,58 +12,71 @@ case "$1" in
 		;;
 esac
 
-# Determine which Tcl version to build
-TCLVERS="8.6.7"
-if echo "$1" | grep '^[0-9][0-9]*\.' >/dev/null || echo "$1" | egrep '^(cvs|fossil)_' >/dev/null; then
-	TCLVERS="$1"
-
-	shift
+# Determine which Tcl version to build.
+if [ -z "${KITCREATOR_TCL_VERSION}" ]; then
+  TCLVERS="8.6.7"
+  if echo "$1" | grep '^[0-9][0-9]*\.' >/dev/null || echo "$1" | egrep '^(cvs|fossil)_' >/dev/null; then
+  	TCLVERS="$1"
+  	shift
+  fi
+else
+  TCLVERS="${KITCREATOR_TCL_VERSION}"
 fi
+
 export TCLVERS
 
+export KC_DIRECTORY="$(cd "$(dirname "$(which "$0")")" && pwd)"
+export PKG_DIRECTORY="${KC_DIRECTORY}/build"
+export UTILS_DIRECTORY="${KC_DIRECTORY}/utils"
+
 # Add the helpers directory to the path
-PATH="$(cd "$(dirname "$(which "$0")")" && pwd)"/common/helpers:"${PATH}"
+PATH="${KC_DIRECTORY}"/utils/helpers:"${PATH}"
 export PATH
 
 # Verify that "pre.sh" has been run if this is a development snapshot of
 # KitCreator
-if [ -f 'build/pre.sh' ]; then
-	if ! find 'kitsh/buildsrc/' -name configure -type f 2>/dev/null | grep configure >/dev/null; then
+if [ -f "${UTILS_DIRECTORY}/pre.sh" ]; then
+	if ! find "${PKG_DIRECTORY}/kitsh/buildsrc/" -name configure -type f 2>/dev/null | grep configure >/dev/null; then
 		echo "Please remember to run 'build/pre.sh' if you expect this build to work." >&2
 	fi
 fi
 
-# Define the list of all packages, for cleaning purposes
-KITCREATOR_ALLPKGS="kitsh tcl tclvfs zlib tk itcl mk4tcl thread dbus tls tclx tcc4tcl tcllib udp yajltcl tdom tuapi"
-
 # Always rebuild kitsh
-rm -f "kitsh/.success"
-if [ "${mode}" = "clean" -o "${mode}" = "distclean" ]; then
+rm -f "build/kitsh/.success"
 
-  for pkg in $(echo ./*); do
-    if [ -d "${pkg}" -a -f "${pkg}/build.sh" ]; then
-      printf "%-10s | %-20s | " "  clean... " "  $pkg"
-      rm -f "${pkg}/build.log" "${pkg}/.success"
-      rm -rf "${pkg}/out" "${pkg}/inst" "${pkg}/build"
-      rm -rf "${pkg}/src"/tmp-*
+if [ "${mode}" = "clean" -o "${mode}" = "distclean" ]; then
+  for pkgdir in $(echo "${PKG_DIRECTORY}"/*); do
+    pkg=$(basename $pkgdir)
+    if [ -d "${pkgdir}" -a -f "${pkgdir}/build.sh" ]; then
+      printf "%-10s | %-20s | " "  clean..." "  $pkg"
+      rm -f "${pkgdir}/build.log" "${pkgdir}/.success"
+      rm -rf "${pkgdir}/out" "${pkgdir}/inst" "${pkgdir}/build" "${pkgdir}/boot"
+      rm -rf "${pkgdir}/src"/tmp-*
       if [ "${mode}" = "distclean" ]; then
         printf "%-20s |" "  clean cache..."
-        rm -rf "${pkg}/src"
+        rm -rf "${pkgdir}/src"
       fi
       printf "  done!\n"
     fi
   done
-
   rm -f tclkit-*
   rm -f libtclkit*.*
   exit 0
 fi
 
-
 # Add packages implied by the additional arguments
 if [ -z "${KITCREATOR_PKGS}" ]; then
 	KITCREATOR_PKGS="tk itcl mk4tcl"
 fi
+
+echo ""
+echo " -- KitCreator Building -- "
+echo ""
+echo "  Tcl Version:  ${TCLVERS}"
+echo "  Packages:     $KITCREATOR_PKGS"
+echo ""
+echo " ------------------------- "
+echo ""
 
 CONFIGUREEXTRA="$@"
 export CONFIGUREEXTRA
@@ -92,6 +105,7 @@ else
 	KC_CROSSCOMPILE='0'
 	KC_CROSSCOMPILE_HOST_OS=''
 fi
+
 export KC_CROSSCOMPILE KC_CROSSCOMPILE_HOST_OS
 
 # Set default target
@@ -117,7 +131,6 @@ if [ "${KITTARGET}" = "kitdll" ]; then
 		if [ "${STATICTK}" != "1" -a "${STATICTK}" != "-1" ]; then
 			echo 'Warning: Linking Tk statically because you are building KitDLL' 2>&1
 			echo '         Set STATICTK to -1 if you really want to link Tk dynamically.' >&2
-
 			STATICTK="1"
 			export STATICTK
 		fi
@@ -130,7 +143,6 @@ if [ "${KITTARGET}" = "kitdll" ]; then
 			echo '         Set STATICMK4 to 1 if you really want to link Mk4tcl statically (normal default).' >&2
 			echo '         Set STATICMK4 to 0 to link Mk4tcl dynamically if possible (this is what is happening now).' >&2
 			echo '         Set STATICMK4 to -1 to build dynamically.' >&2
-
 			STATICMK4="0"
 			export STATICMK4
 		fi
@@ -138,16 +150,21 @@ if [ "${KITTARGET}" = "kitdll" ]; then
 fi
 
 # Find Windows resource-related files
-if [ -f "kit.ico" ]; then
-	KITCREATOR_ICON="$(pwd)/kit.ico"
-else
-	KITCREATOR_ICON="$(echo "$(pwd)/kitsh/buildsrc"/kitsh-*/tclkit.ico)"
+if [ -z "${KITCREATOR_ICON}" ]; then
+  if [ -f "assets/kit.ico" ]; then
+  	KITCREATOR_ICON="${KC_DIRECTORY}/kit.ico"
+  else
+    KITCREATOR_ICON="${KC_DIRECTORY}"/build/kitsh/buildsrc/kitsh-*/tclkit.ico
+  fi
 fi
-if [ -f "kit.rc" ]; then
-	KITCREATOR_RC="$(pwd)/kit.rc"
-else
-	KITCREATOR_RC="$(echo "$(pwd)/kitsh/buildsrc"/kitsh-*/kit.rc)"
+if [ -z "${KITCREATOR_RC}" ]; then
+  if [ -f "assets/kit.rc" ]; then
+  	KITCREATOR_RC="${KC_DIRECTORY}/assets/kit.rc"
+  else
+  	KITCREATOR_RC="${KC_DIRECTORY}"/build/kitsh/buildsrc/kitsh-*/kit.rc
+  fi
 fi
+
 export KITCREATOR_ICON KITCREATOR_RC
 
 # Determine how we invoke a Tcl interpreter
@@ -157,10 +174,10 @@ fi
 for testsh in "${TCLSH_NATIVE}" tclsh tclsh8.4 tclsh8.5 tclsh8.6 "${TCLKIT:-tclkit}"; do
 	if echo 'exit 0' | "${testsh}" >/dev/null 2>/dev/null; then
 		TCLSH_NATIVE="${testsh}"
-
 		break
 	fi
 done
+
 export TCLSH_NATIVE
 
 # Function to determine what build mode is being used
@@ -178,27 +195,25 @@ function useCommonBuildSystem() {
 
 # Cleanup build logs
 for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
-	rm -f "${pkg}/build.log"
+	rm -f "${PKG_DIRECTORY}/${pkg}/build.log"
 done
 
 # Verify that each component is happy with the environment
 validatefailed="0"
 for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
 	failed='0'
-	if [ -f "${pkg}/.success" ]; then
+	if [ -f "${PKG_DIRECTORY}/${pkg}/.success" ]; then
 		continue
 	fi
 
-	if [ -x "${pkg}/validate.sh" ]; then
+	if [ -x "${PKG_DIRECTORY}/${pkg}/validate.sh" ]; then
 		(
-			cd "${pkg}" >/dev/null 2>/dev/null || exit 1
-
+			cd "${PKG_DIRECTORY}/${pkg}" >/dev/null 2>/dev/null  || exit 1
 			./validate.sh 3>&1 4>&2 >> build.log 2>&1 || exit 1
 		) || failed="1"
 
 		if [ "${failed}" = '1' ]; then
 			echo "Failed pre-requisite check for ${pkg}" >&2
-
 			validatefailed='1'
 		fi
 	fi
@@ -213,15 +228,16 @@ failedpkgs=""
 buildfailed="0"
 for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
 	failed="0"
-	if [ -f "${pkg}/.success" ]; then
-		echo -n "Skipping ${pkg} ..."
+  pkgdir="${PKG_DIRECTORY}/${pkg}"
+  printf " %-20s |" "${pkg}"
+	if [ -f "${pkgdir}/.success" ]; then
+		printf " %-10s |" "  Skipping..."
 	else
-		echo -n "Building ${pkg} ..."
-
+    printf " %-10s |" "  Building..."
 		(
-			cd "${pkg}" >/dev/null 2>/dev/null || exit 1
-
+			cd "${pkgdir}" >/dev/null 2>/dev/null || exit 1
 			build_script='./build.sh'
+
 			if [ -x 'kitcreator-build.sh' ]; then
 				build_script='./kitcreator-build.sh'
 			fi
@@ -236,7 +252,7 @@ for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
 			for build_script in "${build_scripts[@]}"; do
 				if useCommonBuildSystem "${build_script}"; then
 					(
-						. ../common/common.sh
+						. "${KC_DIRECTORY}"/utils/build-common.sh
 						. "${build_script}"
 
 						set -x
@@ -281,15 +297,16 @@ for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
 	fi
 
 	if [ "${failed}" = "1" ]; then
-		echo " failed."
+		printf "%-10s |\n" "  Failed!"
 		failedpkgs="${failedpkgs} ${pkg}"
 	else
-		echo " done."
+
+    printf "%-10s |\n" "  Success!"
 	fi
 
 	case "${pkg}" in
-		tcl)
-			TCLCONFIGDIR=$(find "$(pwd)/tcl/build" -name tclConfig.sh | head -1 | sed 's@/[^/]*$@@')
+    tcl)
+			TCLCONFIGDIR=$(find "${KC_DIRECTORY}/build/tcl/build" -name tclConfig.sh | head -1 | sed 's@/[^/]*$@@')
 			TCLCONFIGDIRTAIL="$(basename "${TCLCONFIGDIR}")"
 			export TCLCONFIGDIR TCLCONFIGDIRTAIL
 
@@ -299,35 +316,43 @@ for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
 					CONFIGUREEXTRA="${CONFIGUREEXTRA} --enable-threads"
 				fi
 			fi
-			;;
+		;;
 	esac
 
 	if [ "${failed}" = "1" ]; then
 		buildfailed="1"
 	else
-		touch "${pkg}/.success"
+		touch "${pkgdir}/.success"
 	fi
+
 done
 
 if [ -n "${failedpkgs}" ]; then
-	echo "Failed to build:${failedpkgs}"
+  echo ""
+  echo " --- WARNING: Failed To Build Some Packages --- "
+  echo "  $failedpkgs"
+  echo " ---------------------------------------------- "
+  echo ""
 fi
 
-if [ "${buildfailed}" != "0" ]; then
-	echo 'WARNING: Build is likely incomplete or failed.' >&2
-fi
+cp \
+  'build/kitsh/build'/kitsh-*/libtclkit* . \
+    >/dev/null 2>/dev/null
 
-cp 'kitsh/build'/kitsh-*/libtclkit* . >/dev/null 2>/dev/null
-cp 'kitsh/build'/kitsh-*/kit "tclkit-${TCLVERS}" >/dev/null 2>/dev/null
+cp \
+  'build/kitsh/build'/kitsh-*/kit "tclkit-${TCLVERS}" \
+    >/dev/null 2>/dev/null
+
 if [ ! -f "tclkit-${TCLVERS}" ]; then
-	cp 'kitsh/build'/kitsh-*/kit.exe "tclkit-${TCLVERS}" >/dev/null 2>/dev/null
+	cp \
+    'build/kitsh/build'/kitsh-*/kit.exe "tclkit-${TCLVERS}" \
+      >/dev/null 2>/dev/null
 fi
 
-for postscript in common/post/*; do
+for postscript in utils/post/*; do
 	if [ ! -f "${postscript}" ]; then
 		continue
 	fi
-
 	"${postscript}"
 done
 

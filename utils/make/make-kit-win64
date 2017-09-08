@@ -1,0 +1,11 @@
+#! /bin/sh
+
+AR=x86_64-w64-mingw32-ar
+CC=x86_64-w64-mingw32-gcc
+CXX=x86_64-w64-mingw32-g++
+RANLIB=x86_64-w64-mingw32-ranlib
+RC=x86_64-w64-mingw32-windres
+STRIP="${STRIP:-x86_64-w64-mingw32-strip}"
+export AR CC CXX RANLIB RC STRIP
+
+./kitcreator "$@" --host=x86_64-w64-mingw32

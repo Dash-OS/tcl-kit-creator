@@ -1,0 +1,7 @@
+#! /bin/sh
+
+CROSS="x86_64-unknown-netbsd5"
+CC_ADD="-m32"
+export CROSS CC_ADD
+
+./build/make-kit-crosscompile "$@"

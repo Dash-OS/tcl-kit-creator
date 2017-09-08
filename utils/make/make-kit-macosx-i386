@@ -1,0 +1,7 @@
+#! /bin/sh
+
+CC='gcc -arch i386'
+CXX='g++ -arch i386'
+export CC CXX
+
+./build/make-kit-remote macosx-x86.build.kitcreator.rkeene.org "$@" --enable-aqua --host=i386-apple-darwin9

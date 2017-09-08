@@ -1,0 +1,9 @@
+#! /bin/sh
+
+# Set C compiler to diet libc
+CC='x86_64-slackware-linux-musl-gcc'
+export CC
+
+./build/make-minkit "$@" --disable-load --disable-threads
+
+exit 0

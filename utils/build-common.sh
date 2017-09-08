@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 targetInstallEnvironment='kitcreator'
-pkgdir="$(pwd)"
+pkgdir="${KC_DIRECTORY}/build/${pkg}"
 internalpkgname="${pkg}"
 archivedir="${pkgdir}/src"
 buildsrcdir="${pkgdir}/buildsrc"
@@ -344,6 +344,15 @@ _EOF_
 	fi
 
 	return 0
+}
+
+function success() {
+  if [ -d "boot" ]; then
+    # script requesting boot scripts
+    # be added
+    mkdir -p "${TMP_DIRECTORY}/boot"
+    cp -rf boot/*.tcl "${TMP_DIRECTORY}/boot/"
+  fi
 }
 
 function die() {

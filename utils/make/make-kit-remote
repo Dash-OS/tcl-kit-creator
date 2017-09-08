@@ -1,0 +1,54 @@
+#! /bin/bash
+
+TARGET="$1"
+shift
+
+buildid="$(( hostname; id -u; pwd ) | openssl sha1 | sed 's@^.*= *@@')"
+workdir="/tmp/work-kitcreator-${buildid}"
+
+hostUp='0'
+for try in {1..3}; do
+	checkOk="$(timeout 300 ssh -q "${TARGET}" 'echo ok' 2>/dev/null)"
+
+	if [ "${checkOk}" = 'ok' ]; then
+		hostUp='1'
+		break
+	fi
+
+	sleep 10
+done
+
+if [ "${hostUp}" != '1' ]; then
+	echo "Unable to establish a link to the remote system." >&2
+
+	exit 1
+fi
+
+rsync -aq --delete -e ssh . "${TARGET}:${workdir}/" || exit 1
+
+(
+	newArgv=("$@"); declare -p newArgv
+	declare -p workdir
+	export
+	cat << \_EOF_
+cd "${workdir}" || exit 1
+export PATH="${PATH}:/usr/local/bin:/usr/bin"
+./kitcreator "${newArgv[@]}"
+exit "$?"
+_EOF_
+) | ssh "${TARGET}" bash -s
+retval="$?"
+
+rm -f */build.log
+ssh "${TARGET}" "workdir='${workdir}'; "'cd "${workdir}" && tar -cf - tclkit-* libtclkit* */build.log 2>/dev/null' | tar -xf -
+
+# Clean-up if appropriate
+case "$(pwd)" in
+	/home/rkeene/*)
+		;;
+	*)
+		ssh "${TARGET}" "workdir='${workdir}'; "'rm -rf "${workdir}"'
+		;;
+esac
+
+exit "${retval}"

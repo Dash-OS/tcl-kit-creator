@@ -1,0 +1,50 @@
+#! /usr/bin/env bash
+
+if [ -z "${CROSS}" ]; then
+	echo 'Error: Environment variable CROSS is empty/unset.  Aborting.' >&2
+
+	exit 1
+fi
+
+CCROOT="${HOME}/root/cross-compilers/${CROSS}"
+CCROOTBIN="${CCROOT}/bin"
+
+PATH="${PATH}:${CCROOTBIN}"
+AR="${CCROOTBIN}/${CROSS}-ar"
+CC="${CCROOTBIN}/${CROSS}-gcc ${CC_ADD}"
+CXX="${CCROOTBIN}/${CROSS}-g++ ${CC_ADD}"
+RANLIB="${CCROOTBIN}/${CROSS}-ranlib"
+if [ -z "${STRIP}" ]; then
+	STRIP="${CCROOTBIN}/${CROSS}-strip"
+fi
+export PATH AR CC CXX RANLIB STRIP
+
+# When cross-compiling Tcl it cannot detect these things and so assumes failure
+# This in turn creates linking issues because it will define the replacements
+# in the main library and stubs library, which we may both link to
+ac_cv_func_memcmp_working=yes
+tcl_cv_strstr_unbroken=ok
+tcl_cv_strtoul_unbroken=ok
+tcl_cv_strtod_unbroken=ok
+tcl_cv_strtod_buggy=ok
+export ac_cv_func_memcmp_working tcl_cv_strstr_unbroken tcl_cv_strtoul_unbroken tcl_cv_strtod_unbroken tcl_cv_strtod_buggy
+
+CROSS_HOST="${CROSS}"
+case "${CROSS}" in
+	x86_64-*)
+		case " ${CC_ADD} " in
+			*' -m32 '*)
+				CROSS_HOST="$(echo "${CROSS_HOST}" | sed 's@^x86_64-@i386-@')"
+				;;
+		esac
+		;;
+	i?86-*)
+		case " ${CC_ADD} " in
+			*' -m64 '*)
+				CROSS_HOST="$(echo "${CROSS_HOST}" | sed 's@^i.86-@x86_64-@')"
+				;;
+		esac
+		;;
+esac
+
+./kitcreator "$@" --host="${CROSS_HOST}"

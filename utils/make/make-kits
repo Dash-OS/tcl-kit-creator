@@ -1,0 +1,48 @@
+#! /usr/bin/env bash
+
+versions=(8.5.18 8.6.4)
+
+for version in ${versions[@]}; do
+	for includetk in 0 1; do
+		if [ "${includetk}" = '1' ]; then
+			unset KITCREATOR_PKGS
+
+			add=''
+			addurl=''
+		else
+			KITCREATOR_PKGS='itcl mk4tcl'
+			export KITCREATOR_PKGS
+
+			add='sh'
+			addurl='-notk'
+		fi
+
+		case "$(hostname)" in
+			powermacg5.home.rkeene.org)
+				if [ ! -f "tclkit${add}-${version}-macosx10.5-ix86" ]; then
+					echo "Building x86_64/ix86 Tclkit${add} version ${version}"
+
+					CXXFLAGS='-arch i386 -arch x86_64 -mmacosx-version-min=10.5' CFLAGS='-arch i386 -arch x86_64 -mmacosx-version-min=10.5' ./kitcreator ${version} --enable-aqua --host=x86_64-apple-darwin9
+					mv tclkit-${version} tclkit${add}-${version}-macosx10.5-ix86
+				fi
+
+				if [ ! -f "tclkit${add}-${version}-macosx10.5-powerpc" ]; then
+					echo "Building ppc64/ppc Tclkit${add} version ${version}"
+
+					CXXFLAGS='-arch ppc -arch ppc64 -mmacosx-version-min=10.5' CFLAGS='-arch ppc -arch ppc64 -mmacosx-version-min=10.5' ./kitcreator ${version} --enable-aqua
+					mv tclkit-${version} tclkit${add}-${version}-macosx10.5-powerpc
+				fi
+				;;
+			maul)
+				echo wget -O tclkit${add}-${version}-android-arm http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-android-arm${addurl}-xcompile 
+				echo wget -O tclkit${add}-${version}-linux-mips http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-linux-mipsel${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-solaris-sparc http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-solaris-sparc${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-solaris-sparc64 http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-solaris-sparc64${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-win32-ix86.exe http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-win32-i586${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-win32-x86_64.exe http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-win64-amd64${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-rhel5-ix86 http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-linux-i386${addurl}-xcompile
+				echo wget -O tclkit${add}-${version}-rhel5-x86_64 http://www.rkeene.org/devel/kitcreator/kitbuild/nightly/tclkit-${version}-linux-amd64${addurl}
+				;;
+		esac
+	done
+done

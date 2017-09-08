@@ -1,0 +1,6 @@
+#! /bin/sh
+
+CROSS="hppa64-hp-hpux11.11"
+export CROSS
+
+./build/make-kit-crosscompile "$@" --enable-64bit

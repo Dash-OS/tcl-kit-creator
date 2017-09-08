@@ -1,0 +1,7 @@
+#! /bin/sh
+
+CROSS="sparc-sun-solaris2.8"
+CC_ADD="-m64 -static-libgcc"
+export CROSS CC_ADD
+
+./build/make-kit-crosscompile "$@" --enable-64bit

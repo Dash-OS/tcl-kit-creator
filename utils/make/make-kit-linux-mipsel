@@ -1,0 +1,9 @@
+#! /bin/sh
+
+CROSS="mips-unknown-linux-musl"
+if ! echo " ${KITCREATOR_PKGS} " | grep ' kitdll ' >/dev/null; then
+	KC_KITSH_LDFLAGS="${KC_KITSH_FLAGS} -static"
+fi
+export CROSS KC_KITSH_LDFLAGS
+
+./build/make-kit-crosscompile "$@"

@@ -1,8 +1,7 @@
 #! /usr/bin/env bash
-
 ./kitcreator distclean >/dev/null 2>/dev/null
 
-KITSHROOTDIR="$(ls -1d kitsh/buildsrc/kitsh-*/)"
+KITSHROOTDIR="$(ls -1d build/kitsh/buildsrc/kitsh-*/)"
 export KITSHROOTDIR
 (
 	cd "${KITSHROOTDIR}" || exit 1
@@ -18,6 +17,6 @@ export KITSHROOTDIR
 	exit 0
 ) || exit 1
 
-rm -f tcl/patchscripts/dietlibc.sh
+rm -f build/tcl/patchscripts/dietlibc.sh
 
 find . -name '.*.sw?' -type f | xargs rm -f

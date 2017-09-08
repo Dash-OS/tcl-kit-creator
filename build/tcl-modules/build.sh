@@ -31,6 +31,8 @@ if [ -d "./out" ]; then
 fi
 
 OUTDIR="$(pwd)/out"
+BOOTSRCDIR="$(pwd)/bootsrc"
+OUTBOOTDIR="${OUTDIR}/boot"
 OUTLIBDIR="${OUTDIR}/lib/tcl-modules"
 
 function postdownload() {
@@ -63,25 +65,29 @@ function downloadTclTask() {
 }
 
 function preconfigure() {
-  mkdir -p "${OUTLIBDIR}"
+  mkdir -p "${OUTLIBDIR}" || exit 1
 
   if [ -d "${cluster_archive_name}" ]; then
-    cp -rf "${cluster_archive_name}"/* "${OUTLIBDIR}/"
-    rm -rf "${cluster_archive_name}"
+    cp -rf "${cluster_archive_name}"/* "${OUTLIBDIR}/" || exit 1
+    rm -rf "${cluster_archive_name}" || exit 1
   fi
 
   if [ -d "${task_archive_name}" ]; then
-    cp -rf "${task_archive_name}"/* "${OUTLIBDIR}/"
-    rm -rf "${task_archive_name}"
+    cp -rf "${task_archive_name}"/* "${OUTLIBDIR}/" || exit 1
+    rm -rf "${task_archive_name}" || exit 1
   fi
 
-  cp -rf ./* "${OUTLIBDIR}/"
+  cp -rf ./* "${OUTLIBDIR}/" || exit 1
 
   rm -rf \
     "${OUTLIBDIR}/tcl-modules" \
-    "${OUTLIBDIR}"/.* \
+    "${OUTLIBDIR}"/.git \
     "${OUTLIBDIR}"/*.md \
-    "${OUTLIBDIR}"/LICENSE \
+    "${OUTLIBDIR}"/LICENSE || exit 1
+
+  mkdir -p "${OUTBOOTDIR}" || exit 1
+
+  cp -rf "${BOOTSRCDIR}"/*.tcl "${OUTBOOTDIR}/" || exit 1
 
   exit 0
 }

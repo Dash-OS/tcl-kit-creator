@@ -199,12 +199,14 @@ proc tclInit {} {
 	unset -nocomplain ::tclKitStorage ::tclKitStorage_fd ::tclKitFilename
 	unset -nocomplain ::tclkit_system_encoding
 
-  if {[file exists [file join $mountpoint boot-extra.tcl]]} {
-    uplevel #0 [list \
-      source [file join \
-        $mountpoint boot-extra.tcl
-      ]
+  if {[file exists [file join $mountpoint boot]]} {
+    set bootfiles [glob \
+      -nocomplain \
+      -directory [file join $mountpoint boot] \
+      *.tcl
     ]
+    foreach bootfile $bootfiles {
+      uplevel #0 [list source $bootfile]
+    }
   }
-
 }

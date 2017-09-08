@@ -15,7 +15,7 @@ both packages and the kit itself.
  2. Ability to define separate repo name, package names, and lib names for situations
     that an extension does not use the same name across the board (see [tclparser build script](https://github.com/Dash-OS/tcl-kit-creator/blob/master/tclparser/build.sh)).
  3. Added build scripts for multiple extensions.  Specifically:
-   - [tcl-modules](https://github.com/Dash-OS/tcl-modules) (include [tcl-cluster](https://github.com/Dash-OS/tcl-cluster) and [tcl-task-manager](https://github.com/Dash-OS/tcl-task-manager))
+   - [tcl-modules](https://github.com/Dash-OS/tcl-modules) (include [tcl-cluster](https://github.com/Dash-OS/tcl-cluster) and [tcl-task-manager](https://github.com/Dash-OS/tcl-task-manager)) - tcl-modules is a `Dash OS` maintained repo of micro packages.  These are generally small in size but provide essential tools to enhance your tcl programming experience.
    - [tcl-signal](https://github.com/Dash-OS/tcl-signal) - This extension adds dynamically loadable signal handling to Tcl/Tk scripts.
   It provides a very limited subset of the functionality of tclX (just the
   signal part, and about 3/4 of the functions for signals), but as a result
