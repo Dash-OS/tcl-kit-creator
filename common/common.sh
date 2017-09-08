@@ -115,21 +115,6 @@ function extract() {
         -type f \( -name "*.zip" \) \
         -exec unzip '{}' \;
 
-			# case "${pkgarchive}" in
-			# 	*.tar.gz|*.tgz)
-			# 		gzip -dc "${pkgarchive}" | tar -xf - || exit 1
-			# 		;;
-			# 	*.tar.bz2|*.tbz|*.tbz2)
-			# 		bzip2 -dc "${pkgarchive}" | tar -xf - || exit 1
-			# 		;;
-			# 	*.tar.xz|*.txz)
-			# 		xz -dc "${pkgarchive}" | tar -xf - || exit 1
-			# 		;;
-			# 	*.zip)
-			# 		unzip "${pkgarchive}" || exit 1
-			# 		;;
-			# esac
-
 			shopt -s dotglob
 
       if [ -d "${pkg_archive_name}" ]; then
@@ -145,7 +130,6 @@ function extract() {
         mv ./"${pkg}"*/* . || exit 1
         rmdir ./"${pkg}"* || exit 1
       fi
-
 
 			exit 0
 		) || return 1

@@ -1,3 +1,33 @@
+# Tcl KitCreator
+
+Tclkits make it easy to build customized Tcl distributions
+with your specified packages statically (or dynamically)
+linked.
+
+Expanding upon the excellent work by rkeene ([https://kitcreator.rkeene.org](https://kitcreator.rkeene.org)),
+we slightly modified the general syntax to allow for a few extra customizations while building
+both packages and the kit itself.
+
+### Changes from Original
+
+ 1. Ability to define KITCREATOR_BOOT env variable to provide a boot script
+    that will run any time the executable boots.
+ 2. Ability to define separate repo name, package names, and lib names for situations
+    that an extension does not use the same name across the board (see [tclparser](https://github.com/Dash-OS/tcl-kit-creator/tree/master/tclparser)).
+ 3. Added build scripts for multiple extensions.  Specifically:
+   - [tcl-modules](https://github.com/Dash-OS/tcl-modules) (include [tcl-cluster](https://github.com/Dash-OS/tcl-cluster) and [tcl-task-manager](https://github.com/Dash-OS/tcl-task-manager))
+   - yajltcl (1.5 -> 1.6.2)
+   - [tcl-signal](https://github.com/Dash-OS/tcl-signal) - This extension adds dynamically loadable signal handling to Tcl/Tk scripts.
+  It provides a very limited subset of the functionality of tclX (just the
+  signal part, and about 3/4 of the functions for signals), but as a result
+  is quite small and quick to load.
+   - [socketserver](https://github.com/Dash-OS/tcl-socketserver) Socketserver provides a Tcl command for creating a socketserver. A socketserver is a process which passes accepted TCP connections to a child process over a socket pair. The socket FD can be passed to a child process using sendmsg and SCM_RIGHTS. This is internally implemented using libancillary for the file descriptor passing. [unix_sockets](https://github.com/Dash-OS/tcl-unix-sockets) A Unix domain socket or IPC socket (inter-process communication socket) is a data communications endpoint for exchanging data between processes executing on the same host operating system.
+   - [tclparser](https://github.com/Dash-OS/tcl-parser) An extension for Tcl, written in C, that lets Tcl scripts access Tcl's own parser via the parse command.
+   - [rl_json](https://github.com/RubyLane/rl_json) Extends Tcl with a json value type and a command to manipulate json values directly. Similar in spirit to how the dict command manipulates dictionary values, and comparable in speed
+   - [yajl-tcl](https://github.com/flightaware/yajl-tcl) Tcl bindings for Yet Another JSON Library https://flightaware.github.io/yajl-tcl/
+
+### Original Readme
+
 This will build a Tclkit named "tclkit-<version>" or a KitDLL named
 "libtclkit<version>.so".
 
@@ -84,7 +114,7 @@ Environment variables:
 	2. PATCH
 		Specifies the tool you wish to be called to apply unified
 		diff patches.  This script is generally more well tested with
-		GNU Patch. 
+		GNU Patch.
 
 	3. TCLKIT
 		Specify the path to a Tclkit that is runnable on the current
@@ -160,7 +190,7 @@ Environment variables:
 
 Cross compiling Environment Variables:
 
-	1. CC  
+	1. CC
 		C compiler   e.g. i686-pc-mingw32-gcc
 
 	2. CXX
@@ -179,7 +209,7 @@ Cross compiling Environment Variables:
 	6. NM
 		Executable used to dump names from the objects  e.g. i686-pc-mingw32-nm
 
-	7. CC_FOR_BUILD, HOST_CC 
+	7. CC_FOR_BUILD, HOST_CC
 		Set this to the name of compiler on the host on which
 		the cross compilation is being run.
 

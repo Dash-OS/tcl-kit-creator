@@ -1,13 +1,13 @@
 # Example build script
 # with some options to change
 #
-#### Run this first!
-# ./build/pre.sh
+### Run this first!
+./build/pre.sh
 
 #### Clean the Kitcreator Libs and Archives
 # ./kitcreator distclean
-#### Clean the Kitcreator Libs but keep the Archives
-# ./kitcreator clean
+### Clean the Kitcreator Libs but keep the Archives
+./kitcreator clean
 
 export KITCREATOR_PKGS="tcl-modules tcc4tcl tuapi socketserver signal tclparser tdom yajltcl rl_json udp mk4tcl tcllib unix_sockets tls";
 
