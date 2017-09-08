@@ -13,18 +13,17 @@ both packages and the kit itself.
  1. Ability to define KITCREATOR_BOOT env variable to provide a boot script
     that will run any time the executable boots.
  2. Ability to define separate repo name, package names, and lib names for situations
-    that an extension does not use the same name across the board (see [tclparser](https://github.com/Dash-OS/tcl-kit-creator/tree/master/tclparser)).
+    that an extension does not use the same name across the board (see [tclparser buil script](https://github.com/Dash-OS/tcl-kit-creator/blob/master/tclparser/build.sh)).
  3. Added build scripts for multiple extensions.  Specifically:
    - [tcl-modules](https://github.com/Dash-OS/tcl-modules) (include [tcl-cluster](https://github.com/Dash-OS/tcl-cluster) and [tcl-task-manager](https://github.com/Dash-OS/tcl-task-manager))
-   - yajltcl (1.5 -> 1.6.2)
    - [tcl-signal](https://github.com/Dash-OS/tcl-signal) - This extension adds dynamically loadable signal handling to Tcl/Tk scripts.
   It provides a very limited subset of the functionality of tclX (just the
   signal part, and about 3/4 of the functions for signals), but as a result
   is quite small and quick to load.
-   - [socketserver](https://github.com/Dash-OS/tcl-socketserver) Socketserver provides a Tcl command for creating a socketserver. A socketserver is a process which passes accepted TCP connections to a child process over a socket pair. The socket FD can be passed to a child process using sendmsg and SCM_RIGHTS. This is internally implemented using libancillary for the file descriptor passing. [unix_sockets](https://github.com/Dash-OS/tcl-unix-sockets) A Unix domain socket or IPC socket (inter-process communication socket) is a data communications endpoint for exchanging data between processes executing on the same host operating system.
-   - [tclparser](https://github.com/Dash-OS/tcl-parser) An extension for Tcl, written in C, that lets Tcl scripts access Tcl's own parser via the parse command.
-   - [rl_json](https://github.com/RubyLane/rl_json) Extends Tcl with a json value type and a command to manipulate json values directly. Similar in spirit to how the dict command manipulates dictionary values, and comparable in speed
-   - [yajl-tcl](https://github.com/flightaware/yajl-tcl) Tcl bindings for Yet Another JSON Library https://flightaware.github.io/yajl-tcl/
+   - [socketserver](https://github.com/Dash-OS/tcl-socketserver)-  Socketserver provides a Tcl command for creating a socketserver. A socketserver is a process which passes accepted TCP connections to a child process over a socket pair. The socket FD can be passed to a child process using sendmsg and SCM_RIGHTS. This is internally implemented using libancillary for the file descriptor passing. [unix_sockets](https://github.com/Dash-OS/tcl-unix-sockets)- A Unix domain socket or IPC socket (inter-process communication socket) is a data communications endpoint for exchanging data between processes executing on the same host operating system.
+   - [tclparser](https://github.com/Dash-OS/tcl-parser) - An extension for Tcl, written in C, that lets Tcl scripts access Tcl's own parser via the parse command.
+   - [rl_json](https://github.com/RubyLane/rl_json) - Extends Tcl with a json value type and a command to manipulate json values directly. Similar in spirit to how the dict command manipulates dictionary values, and comparable in speed.  Combines with tcl-modules/json_tools for even more json sugary.
+   - [yajl-tcl](https://github.com/flightaware/yajl-tcl) (v1.5 -> v1.6.2) - Tcl bindings for Yet Another JSON Library.  A bit slower than rl_json but succeeds where rl_json fails (dynamically building json values by passing around an object).
 
 ### Original Readme
 
