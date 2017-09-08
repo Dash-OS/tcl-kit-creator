@@ -1,0 +1,46 @@
+--- tk8.6.3.orig/win/tkWinDialog.c	2014-10-25 11:50:40.000000000 -0500
++++ tk8.6.3-fixishellitem/win/tkWinDialog.c	2014-11-18 22:57:19.021033000 -0600
+@@ -209,19 +209,9 @@
+  * older compilers? Should we prefix definitions with Tcl_ instead
+  * of using the same names as in the SDK?
+  */
+-#ifndef __IShellItemArray_INTERFACE_DEFINED__
+-#define __IShellItemArray_INTERFACE_DEFINED__
+-
+-typedef enum SIATTRIBFLAGS {
+-    SIATTRIBFLAGS_AND	= 0x1,
+-    SIATTRIBFLAGS_OR	= 0x2,
+-    SIATTRIBFLAGS_APPCOMPAT	= 0x3,
+-    SIATTRIBFLAGS_MASK	= 0x3,
+-    SIATTRIBFLAGS_ALLITEMS	= 0x4000
+-} SIATTRIBFLAGS;
++#ifndef __IShellItem_INTERFACE_DEFINED__
++#  define __IShellItem_INTERFACE_DEFINED__
+ #ifdef __MSVCRT__
+-typedef ULONG SFGAOF;
+-
+ typedef struct IShellItem IShellItem;
+ 
+ typedef enum __MIDL_IShellItem_0001 {
+@@ -250,6 +240,21 @@
+ struct IShellItem {
+     CONST_VTBL struct IShellItemVtbl *lpVtbl;
+ };
++#endif
++#endif
++
++#ifndef __IShellItemArray_INTERFACE_DEFINED__
++#define __IShellItemArray_INTERFACE_DEFINED__
++
++typedef enum SIATTRIBFLAGS {
++    SIATTRIBFLAGS_AND	= 0x1,
++    SIATTRIBFLAGS_OR	= 0x2,
++    SIATTRIBFLAGS_APPCOMPAT	= 0x3,
++    SIATTRIBFLAGS_MASK	= 0x3,
++    SIATTRIBFLAGS_ALLITEMS	= 0x4000
++} SIATTRIBFLAGS;
++#ifdef __MSVCRT__
++typedef ULONG SFGAOF;
+ #endif /* __MSVCRT__ */
+ typedef struct IShellItemArray IShellItemArray;
+ typedef struct IShellItemArrayVtbl

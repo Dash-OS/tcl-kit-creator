@@ -1,0 +1,21 @@
+diff -uNr tcl8.6.0.orig/generic/tclIOUtil.c tcl8.6.0-1segfaultonnotmp/generic/tclIOUtil.c
+--- tcl8.6.0.orig/generic/tclIOUtil.c	2012-10-25 06:43:59.000000000 -0500
++++ tcl8.6.0-1segfaultonnotmp/generic/tclIOUtil.c	2013-05-18 13:23:32.370452500 -0500
+@@ -3228,9 +3228,15 @@
+      */
+ 
+     copyToPtr = TclpTempFileNameForLibrary(interp, pathPtr);
+-    Tcl_IncrRefCount(copyToPtr);
+ 
+-    copyFsPtr = Tcl_FSGetFileSystemForPath(copyToPtr);
++    if (copyToPtr != NULL) {
++        Tcl_IncrRefCount(copyToPtr);
++
++        copyFsPtr = Tcl_FSGetFileSystemForPath(copyToPtr);
++    } else {
++        copyFsPtr = NULL;
++    }
++
+     if ((copyFsPtr == NULL) || (copyFsPtr == fsPtr)) {
+ 	/*
+ 	 * We already know we can't use Tcl_FSLoadFile from this filesystem,

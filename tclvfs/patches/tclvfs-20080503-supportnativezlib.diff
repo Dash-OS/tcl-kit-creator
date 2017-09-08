@@ -1,0 +1,81 @@
+diff -uNr tclvfs-20080503/library/vfslib.tcl tclvfs-20080503-supportnativezlib/library/vfslib.tcl
+--- tclvfs-20080503/library/vfslib.tcl	2006-09-14 16:39:57.000000000 -0500
++++ tclvfs-20080503-supportnativezlib/library/vfslib.tcl	2012-10-08 14:30:50.930779011 -0500
+@@ -5,6 +5,16 @@
+ 
+ namespace eval ::vfs {
+     variable zseq 0	;# used to generate temp zstream cmd names
++    variable zlibPkg 0  ;# Use Tcl 8.6+ zlib command, or zlib package
++}
++
++
++# Work with the Tcl 8.6+ built-in zlib command or the zlib package, if available
++catch {
++	set ::vfs::zlibVers [package present zlib]
++	if {$::vfs::zlibVers == "1.1"} {
++		set ::vfs::zlibPkg 1
++	}
+ }
+ 
+ # for backwards compatibility
+@@ -94,8 +104,12 @@
+ 		}
+ 		# to seek back, rewind, i.e. start from scratch
+ 		if {$a1 < $pos} {
+-		    rename $zcmd ""
+-		    zlib $imode $zcmd
++		    if {$::vfs::zlibPkg} {
++    			rename $zcmd ""
++    			zlib $imode $zcmd
++		    } else {
++			$zcmd reset
++		    }
+ 		    seek $ifd 0
+ 		    set pos 0
+ 		}
+@@ -110,19 +124,26 @@
+ 		return $pos
+ 	    }
+ 	    read {
++                if {$::vfs::zlibPkg} {
++                   set zputcmd fill
++                   set zgetcmd drain
++                } else {
++                   set zputcmd put
++                   set zgetcmd get
++                }
+ 		set r ""
+ 		set n $a1
+ 		#puts stderr " want $n z $zcmd pos $pos ilen $ilen"
+ 		if {$n + $pos > $ilen} { set n [expr {$ilen - $pos}] }
+ 		while {$n > 0} {
+-		    if {[$zcmd fill] == 0} {
++                    if {![eof $ifd]} {
+ 		        set c [expr {$clen - [tell $ifd]}]
+ 			if {$c > 4096} { set c 4096 }
+ 			set data [read $ifd $c]
+ 			#puts "filled $c [string length $data]"
+-			$zcmd fill $data
+-		    }
+-		    set data [$zcmd drain $n]
++                        $zcmd $zputcmd $data
++                    }
++		    set data [$zcmd $zgetcmd $n]
+ 		    #puts stderr " read [string length $data]"
+ 		    if {$data eq ""} break
+ 		    append r $data
+@@ -141,8 +162,12 @@
+     }
+ 
+     proc vfs::zstream {mode ifd clen ilen} {
+-	set cname _zstream_[incr ::vfs::zseq]
+-	zlib s$mode $cname
++        if {$::vfs::zlibPkg} {
++            set cname _zstream_[incr ::vfs::zseq]
++            zlib s$mode $cname
++        } else {
++            set cname [zlib stream $mode]
++        }
+ 	set cmd [list ::vfs::zstream_handler $cname $ifd $clen $ilen s$mode]
+ 	set fd [rechan $cmd 2]
+ 	set ::vfs::_zstream_pos($fd) 0

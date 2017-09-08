@@ -1,0 +1,192 @@
+#! /usr/bin/env tclsh
+
+set queue "/home/rkeene/devel/kitcreator/build/web/queue"
+set outdir "/web/customers/kitcreator.rkeene.org/kits"
+set builddir "/tmp/kitcreator-web/builds"
+
+if {![file exists "${queue}.old"]} {
+	if {![file exists $queue]} {
+		exit 0
+	}
+
+	file rename "$queue" "${queue}.old"
+}
+set queue "${queue}.old"
+
+set fd [open $queue r]
+set data [read $fd]
+close $fd
+
+set ::env(TCLKIT) "/home/rkeene/bin/tclkit"
+
+foreach line [split $data "\n"] {
+	if {$line == ""} {
+		continue
+	}
+
+	unset -nocomplain buildinfo
+
+	array set buildinfo $line
+
+	set outfile [file join $outdir $buildinfo(key) $buildinfo(filename)]
+
+	# Skip if build completed
+	if {[file exists $outfile]} {
+		continue
+	}
+
+	# Skip if build failed
+	if {[file exists $outfile.buildfail]} {
+		continue
+	}
+
+	# Set the build directory
+	file delete -force -- $builddir
+	set workdir [file join $builddir $buildinfo(key) build]
+	file mkdir $workdir
+	cd $workdir
+
+	# Find place to store build info
+	set keydir [file join $outdir $buildinfo(key)]
+	file mkdir $keydir
+	set fd [open [file join $keydir buildinfo] w]
+	puts $fd [array get buildinfo]
+	close $fd
+
+	set tarball kitcreator-${buildinfo(kitcreator_version)}.tar.gz
+
+	if {[catch {
+		exec wget -q -O $tarball http://kitcreator.rkeene.org/fossil/tarball/${tarball}?uuid=${buildinfo(kitcreator_version)}
+		exec gzip -dc $tarball | tar -xf -
+		cd kitcreator-${buildinfo(kitcreator_version)}
+	}]} {
+		continue
+	}
+
+	set script "./build/make-kit-${buildinfo(platform)}"
+	set args [list]
+
+	set ::env(KITCREATOR_PKGS) " [join $buildinfo(packages) " "] "
+
+	foreach {option value} $buildinfo(options) {
+		switch -- $option {
+			"kitdll" {
+				if {$value} {
+					set ::env(KITCREATOR_PKGS) "$::env(KITCREATOR_PKGS) kitdll"
+				}
+			}
+			"threaded" {
+				if {$value} {
+					lappend args "--enable-threads"
+				} else {
+					lappend args "--disable-threads"
+				}
+			}
+			"debug" {
+				if {$value} {
+					lappend args "--enable-symbols"
+					set ::env(STRIP) true
+				}
+			}
+			"storage" {
+				lappend args "--enable-kit-storage=$value"
+			}
+			"dynamictk" {
+				if {$value} {
+					if {[lsearch -exact $buildinfo(packages) "tk"] != -1} {
+						set ::env(STATICTK) -1
+					}
+				}
+			}
+			"minbuild" {
+				if {$value} {
+					set ::env(KITCREATOR_MINENCODINGS) 1
+					set ::env(KITCREATOR_MINBUILD) 1
+				}
+			}
+			"staticlibssl" {
+				if {$value} {
+					set ::env(KC_TLS_LINKSSLSTATIC) 1
+				}
+			}
+			"buildlibssl" {
+				if {$value} {
+					set ::env(KC_TLS_BUILDSSL) 1
+				}
+			}
+			"staticpkgs" {
+				if {$value} {
+					set ::env(KC_TCL_STATICPKGS) 1
+				}
+			}
+			"tclutfmax6" {
+				if {$value} {
+					set ::env(KC_TCL_UTF_MAX) 6
+				}
+			}
+			"staticmk4" {
+			}
+		}
+	}
+
+	catch {
+		exec ./build/pre.sh
+	}
+
+	catch {
+		file delete "${outfile}.log"
+	}
+
+	catch {
+		set cmd [list $script $buildinfo(tcl_version) {*}$args]
+		set fd [open "${outfile}.log" w+]
+		puts $fd "Running: export KITCREATOR_PKGS=\"$::env(KITCREATOR_PKGS)\""
+
+		foreach variable [list STRIP STATICTK KITCREATOR_MINENCODINGS KITCREATOR_MINBUILD KC_TLS_LINKSSLSTATIC KC_TLS_BUILDSSL KC_TCL_STATICPKGS KC_TCL_UTF_MAX] {
+			if {[info exists ::env($variable)]} {
+				puts $fd "Running: export $variable=\"$::env($variable)\""
+			}
+		}
+
+		puts $fd "Running: $cmd"
+		close $fd
+	}
+
+	catch {
+		exec {*}$cmd >> "${outfile}.log" 2>@1
+	}
+
+	catch {
+		exec grep ^ {*}[lsort -dictionary [glob */build.log]] >> "${outfile}.log"
+	}
+
+	foreach file [list tclkit-$buildinfo(tcl_version) {*}[glob -nocomplain libtclkit*]] {
+		switch -glob -- $file {
+			"*.dylib" - "*.so" - "*.sl" - "*.dll" { }
+			"tclkit-*" {}
+			default {
+				continue
+			}
+		}
+
+		if {[file exists $file]} {
+			file rename $file $outfile
+
+			break
+		}
+	}
+
+	if {![file exists $outfile]} {
+		set fd [open $outfile.buildfail "w+"]
+		puts $fd "$line"
+		close $fd
+	}
+
+	cd $outdir
+
+	file delete -force $workdir
+}
+
+file delete $queue
+
+exit 0

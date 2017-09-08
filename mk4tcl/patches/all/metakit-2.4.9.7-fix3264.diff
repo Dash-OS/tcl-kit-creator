@@ -1,0 +1,52 @@
+diff -uNr metakit-2.4.9.7.orig/include/mk4.h metakit-2.4.9.7-1fix3264/include/mk4.h
+--- metakit-2.4.9.7.orig/include/mk4.h	2007-06-15 19:23:25.000000000 -0500
++++ metakit-2.4.9.7-1fix3264/include/mk4.h	2014-05-20 19:45:24.000000000 -0500
+@@ -9,6 +9,8 @@
+ #ifndef __MK4_H__
+ #define __MK4_H__
+ 
++#include <stdint.h>
++
+ //---------------------------------------------------------------------------
+ //
+ //  TITLE
+@@ -199,11 +201,7 @@
+ 
+ typedef unsigned char t4_byte; // create typedefs for t4_byte, etc.
+ 
+-#if q4_LONG64
+-typedef int t4_i32; // if longs are 64b, then int must be 32b
+-#else 
+-typedef long t4_i32; // if longs aren't 64b, then they are 32b
+-#endif 
++typedef int32_t t4_i32;
+ 
+ #if q4_LONG64           // choose a way to represent 64b integers
+ typedef long t4_i64;
+diff -uNr metakit-2.4.9.7.orig/src/header.h metakit-2.4.9.7-1fix3264/src/header.h
+--- metakit-2.4.9.7.orig/src/header.h	2007-03-09 09:58:53.000000000 -0600
++++ metakit-2.4.9.7-1fix3264/src/header.h	2014-05-20 19:40:12.000000000 -0500
+@@ -13,6 +13,10 @@
+ 
+ #include "config.h"
+ 
++#ifdef HAVE_STDINT_H
++# include <stdint.h>
++#endif
++
+ /////////////////////////////////////////////////////////////////////////////
+ // A number of preprocessor options are used in the source code
+ //
+@@ -139,11 +143,7 @@
+ 
+ typedef unsigned char t4_byte; // create typedefs for t4_byte, etc.
+ 
+-#if SIZEOF_LONG == 8
+-typedef int t4_i32; // longs are 64b, so int must be 32b
+-#else 
+-typedef long t4_i32; // longs aren't 64b, so they are 32b
+-#endif 
++typedef int32_t t4_i32;
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ // Include header files which contain additional os/cpu/ide/fw specifics

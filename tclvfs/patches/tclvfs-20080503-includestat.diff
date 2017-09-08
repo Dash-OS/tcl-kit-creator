@@ -1,0 +1,13 @@
+diff -uNr tclvfs-20080503.orig//generic/vfs.c tclvfs-20080503-1rsk//generic/vfs.c
+--- tclvfs-20080503.orig//generic/vfs.c	2006-08-30 19:38:03.000000000 +0000
++++ tclvfs-20080503-1rsk//generic/vfs.c	2010-09-10 06:41:30.280557731 +0000
+@@ -20,6 +20,9 @@
+  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+  */
+ 
++#ifdef HAVE_SYS_STAT_H
++#  include <sys/stat.h>
++#endif
+ #include <tcl.h>
+ /* Required to access the 'stat' structure fields, and TclInExit() */
+ #include "tclInt.h"

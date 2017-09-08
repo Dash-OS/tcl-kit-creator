@@ -1,0 +1,57 @@
+diff -uNr metakit-2.4.9.7-orig/unix/Makefile.in metakit-2.4.9.7-rsk/unix/Makefile.in
+--- metakit-2.4.9.7-orig/unix/Makefile.in	2007-06-15 19:23:25.000000000 -0500
++++ metakit-2.4.9.7-rsk/unix/Makefile.in	2010-02-26 00:13:39.000000000 -0600
+@@ -16,6 +16,9 @@
+ 
+ DEMOS   = demo dump myio
+ 
++AR = ar
++RANLIB = ranlib
++
+ LINK_SPECIAL_FLAGS	=	@LINK_SPECIAL_FLAGS@ @LIBS@
+ LINK_SPECIAL_FILES	=	@LINK_SPECIAL_FILES@
+ 
+@@ -98,12 +101,12 @@
+ 			$(srcdir)/../include/mk4str.h \
+ 			$(srcdir)/../include/mk4str.inl $(DESTDIR)$(includedir)
+ 	$(INSTALL_PROGRAM) libmk4$(LIBEXT) $(DESTDIR)$(libdir)
+-	if [ '${LIBEXT}' = '.a' ]; then ranlib $(DESTDIR)$(libdir)/libmk4.a; fi
++	if [ '${LIBEXT}' = '.a' ]; then $(RANLIB) $(DESTDIR)$(libdir)/libmk4.a; fi
+ 
+ install-tcl: Mk4tcl$(LIBEXT)
+ 	mkdir -p $(DESTDIR)$(tcllibdir)/Mk4tcl
+ 	$(INSTALL_PROGRAM) Mk4tcl$(LIBEXT) $(DESTDIR)$(tcllibdir)/Mk4tcl
+-	if [ '${LIBEXT}' = '.a' ]; then ranlib $(DESTDIR)$(tcllibdir)/Mk4tcl/Mk4tcl.a; fi
++	if [ '${LIBEXT}' = '.a' ]; then $(RANLIB) $(DESTDIR)$(tcllibdir)/Mk4tcl/Mk4tcl.a; fi
+ 	echo 'package ifneeded Mk4tcl 2.4.9.7 [list load [file join $$dir Mk4tcl$(LIBEXT)] Mk4tcl]' >$(DESTDIR)$(tcllibdir)/Mk4tcl/pkgIndex.tcl
+ 
+ install-python: Mk4py$(LIBEXT)
+@@ -130,22 +133,22 @@
+ 	cd $(srcdir) && autoconf
+ 
+ libmk4$(LIB_SUFFIX): $(LOBJS)
+-	ar rcu $@ $(LOBJS)
+-	ranlib $@
++	$(AR) rcu $@ $(LOBJS)
++	$(RANLIB) $@
+ 
+ libmk4$(SHLIB_SUFFIX): $(LOBJS) $(LINK_SPECIAL_FILES)
+ 	$(SHLIB_LD) -o $@ $(LOBJS) $(LINK_SPECIAL_FLAGS)
+ 
+ Mk4tcl$(LIB_SUFFIX): mk4tcl.o mk4too.o $(LOBJS)
+-	ar rcu $@ mk4tcl.o mk4too.o $(LOBJS)
+-	ranlib $@
++	$(AR) rcu $@ mk4tcl.o mk4too.o $(LOBJS)
++	$(RANLIB) $@
+ 
+ Mk4tcl$(SHLIB_SUFFIX): mk4tcl.o mk4too.o $(LOBJS) $(LINK_SPECIAL_FILES)
+ 	$(SHLIB_LD) -o $@ mk4tcl.o mk4too.o $(LOBJS) $(LINK_SPECIAL_FLAGS)
+ 
+ Mk4py$(LIB_SUFFIX): $(PYOBJS) $(LOBJS)
+-	ar cru $@ $(PYOBJS) $(LOBJS)
+-	ranlib $@
++	$(AR) cru $@ $(PYOBJS) $(LOBJS)
++	$(RANLIB) $@
+ 
+ Mk4py$(SHLIB_SUFFIX): $(PYOBJS) $(LOBJS) $(LINK_SPECIAL_FILES)
+ 	$(SHLIB_LD) -o $@ $(PYOBJS) $(LOBJS) $(LINK_SPECIAL_FLAGS)

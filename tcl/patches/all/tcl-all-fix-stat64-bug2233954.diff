@@ -1,0 +1,13 @@
+diff -uNr Tcl_Source_Code-e7b4aca82756056a/generic/tcl.h Tcl_Source_Code-e7b4aca82756056a-bug2233954/generic/tcl.h
+--- Tcl_Source_Code-e7b4aca82756056a/generic/tcl.h	2012-02-11 07:44:35.000000000 -0800
++++ Tcl_Source_Code-e7b4aca82756056a-bug2233954/generic/tcl.h	2012-02-14 07:29:01.000000000 -0800
+@@ -437,6 +437,9 @@
+  */
+ #   ifndef TCL_LL_MODIFIER
+ #      ifdef HAVE_STRUCT_STAT64
++#        ifdef HAVE_SYS_STAT_H
++#          include <sys/stat.h>
++#        endif
+ typedef struct stat64	Tcl_StatBuf;
+ #      else
+ typedef struct stat	Tcl_StatBuf;

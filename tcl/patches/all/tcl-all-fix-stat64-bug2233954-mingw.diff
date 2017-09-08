@@ -1,0 +1,12 @@
+diff -uNr Tcl_Source_Code-e7b4aca82756056a/generic/tcl.h Tcl_Source_Code-e7b4aca82756056a-bug2233954/generic/tcl.h
+--- Tcl_Source_Code-e7b4aca82756056a/generic/tcl.h	2012-02-11 07:44:35.000000000 -0800
++++ Tcl_Source_Code-e7b4aca82756056a-bug2233954/generic/tcl.h	2012-02-14 07:29:01.000000000 -0800
+@@ -454,6 +454,8 @@
+ 	typedef struct __stat64 Tcl_StatBuf;
+ #   elif (defined(_MSC_VER) && (_MSC_VER < 1400)) || defined(_USE_32BIT_TIME_T)
+ 	typedef struct _stati64	Tcl_StatBuf;
++#   elif defined(__MINGW32_VERSION)
++	typedef struct _stati64	Tcl_StatBuf;
+ #   else
+ 	typedef struct _stat32i64 Tcl_StatBuf;
+ #   endif /* _MSC_VER < 1400 */

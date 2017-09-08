@@ -1,0 +1,42 @@
+diff -uNr metakit-2.4.9.7-orig/tcl/mk4tcl.cpp metakit-2.4.9.7-rsk/tcl/mk4tcl.cpp
+--- metakit-2.4.9.7-orig/tcl/mk4tcl.cpp	2007-06-18 16:05:24.000000000 -0500
++++ metakit-2.4.9.7-rsk/tcl/mk4tcl.cpp	2010-02-21 18:30:34.000000000 -0600
+@@ -979,7 +979,7 @@
+   void *tag = (&view_[0])._seq; // horrific hack to get at c4_Sequence pointer
+   if (objPtr->typePtr !=  &mkPropertyType || objPtr
+     ->internalRep.twoPtrValue.ptr1 != tag) {
+-    Tcl_ObjType *oldTypePtr = objPtr->typePtr;
++    Tcl_ObjType *oldTypePtr = (Tcl_ObjType *) objPtr->typePtr;
+ 
+     char type = 'S';
+ 
+@@ -1083,7 +1083,7 @@
+   }
+ 
+   if (objPtr->typePtr !=  &mkCursorType) {
+-    Tcl_ObjType *oldTypePtr = objPtr->typePtr;
++    Tcl_ObjType *oldTypePtr = (Tcl_ObjType *) objPtr->typePtr;
+ 
+     const char *string = Tcl_GetStringFromObj(objPtr, 0);
+ 
+@@ -2156,7 +2156,7 @@
+         _error = TCL_OK;
+       else if (_error == TCL_ERROR) {
+         char msg[100];
+-        sprintf(msg, "\n  (\"mk::loop\" body line %d)", interp->errorLine);
++        sprintf(msg, "\n  (\"mk::loop\")");
+         Tcl_AddObjErrorInfo(interp, msg,  - 1);
+       }
+       break;
+diff -uNr metakit-2.4.9.7-orig/tcl/mk4too.cpp metakit-2.4.9.7-rsk/tcl/mk4too.cpp
+--- metakit-2.4.9.7-orig/tcl/mk4too.cpp	2007-03-09 09:58:53.000000000 -0600
++++ metakit-2.4.9.7-rsk/tcl/mk4too.cpp	2010-02-21 18:30:38.000000000 -0600
+@@ -612,7 +612,7 @@
+           _error = TCL_OK;
+         else if (_error == TCL_ERROR) {
+           char msg[100];
+-          sprintf(msg, "\n  (\"mk::loop\" body line %d)", interp->errorLine);
++          sprintf(msg, "\n  (\"mk::loop\")");
+           Tcl_AddObjErrorInfo(interp, msg,  - 1);
+         }
+         break;

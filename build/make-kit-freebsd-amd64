@@ -1,0 +1,6 @@
+#! /bin/sh
+
+CROSS="x86_64-unknown-freebsd8"
+export CROSS
+
+./build/make-kit-crosscompile "$@" --enable-64bit

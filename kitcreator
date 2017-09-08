@@ -1,0 +1,333 @@
+#! /usr/bin/env bash
+
+# Clean variables which will interfere with the build
+unset MAKEFLAGS DESTDIR
+
+# Determine appropriate mode
+mode="build"
+case "$1" in
+	clean|distclean|build|retry)
+		mode="$1"
+		shift
+		;;
+esac
+
+# Determine which Tcl version to build
+TCLVERS="8.6.7"
+if echo "$1" | grep '^[0-9][0-9]*\.' >/dev/null || echo "$1" | egrep '^(cvs|fossil)_' >/dev/null; then
+	TCLVERS="$1"
+
+	shift
+fi
+export TCLVERS
+
+# Add the helpers directory to the path
+PATH="$(cd "$(dirname "$(which "$0")")" && pwd)"/common/helpers:"${PATH}"
+export PATH
+
+# Verify that "pre.sh" has been run if this is a development snapshot of
+# KitCreator
+if [ -f 'build/pre.sh' ]; then
+	if ! find 'kitsh/buildsrc/' -name configure -type f 2>/dev/null | grep configure >/dev/null; then
+		echo "Please remember to run 'build/pre.sh' if you expect this build to work." >&2
+	fi
+fi
+
+# Define the list of all packages, for cleaning purposes
+KITCREATOR_ALLPKGS="kitsh tcl tclvfs zlib tk itcl mk4tcl thread dbus tls tclx tcc4tcl tcllib udp yajltcl tdom tuapi"
+
+# Always rebuild kitsh
+rm -f "kitsh/.success"
+for pkg in ${KITCREATOR_ALLPKGS} ${KITCREATOR_PKGS}; do
+	if [ "${mode}" != "retry" -o ! -f "${pkg}/.success" ]; then
+		rm -f "${pkg}/build.log" "${pkg}/.success"
+		rm -rf "${pkg}/out" "${pkg}/inst" "${pkg}/build"
+
+		rm -rf "${pkg}/src"/tmp-*
+	fi
+
+	if [ "${mode}" = "distclean" ]; then
+		rm -rf "${pkg}/src"
+	fi
+done
+
+# We're all done if we're in clean or distclean mode
+if [ "${mode}" = "clean" -o "${mode}" = "distclean" ]; then
+	rm -f tclkit-*
+	rm -f libtclkit*.*
+
+	exit 0
+fi
+
+# Add packages implied by the additional arguments
+if [ -z "${KITCREATOR_PKGS}" ]; then
+	KITCREATOR_PKGS="tk itcl mk4tcl"
+fi
+
+CONFIGUREEXTRA="$@"
+export CONFIGUREEXTRA
+
+if echo " ${CONFIGUREEXTRA} " | grep ' --enable-threads ' >/dev/null 2>/dev/null; then
+	KITCREATOR_ADD_ENABLE_THREADS='1'
+	KITCREATOR_PKGS="${KITCREATOR_PKGS} thread"
+elif echo " ${CONFIGUREEXTRA} " | grep ' --disable-threads ' >/dev/null 2>/dev/null; then
+	KITCREATOR_ADD_ENABLE_THREADS='0'
+fi
+
+# Determine cross-compile status
+host_os="$(echo " ${CONFIGUREEXTRA} " | sed 's@^.* --host=\([^ ]*\) .*$@\1@
+t x
+d
+:x')"
+build_os="$(echo " ${CONFIGUREEXTRA} " | sed 's@^.* --build=\([^ ]*\) .*$@\1@
+t x
+d
+:x')"
+
+if [ "${host_os}" != "${build_os}" -a -n "${host_os}" ]; then
+	KC_CROSSCOMPILE='1'
+	KC_CROSSCOMPILE_HOST_OS="${host_os}"
+else
+	KC_CROSSCOMPILE='0'
+	KC_CROSSCOMPILE_HOST_OS=''
+fi
+export KC_CROSSCOMPILE KC_CROSSCOMPILE_HOST_OS
+
+# Set default target
+KITTARGET="kitsh"
+export KITTARGET
+
+# Fix up package list
+## If building KitDLL, define it as our target
+if echo " ${KITCREATOR_PKGS} " | grep ' kitdll ' >/dev/null 2>/dev/null; then
+	KITCREATOR_PKGS="$(echo " ${KITCREATOR_PKGS} " | sed 's@ kitdll @ @g;s@^  *@@;s@  *$@@;s@   *@ @g')"
+	KITTARGET="kitdll"
+fi
+
+# If the user manually requested "--enable-kitdll", make it so
+if echo "x $@ " | grep ' [-][-]enable-kitdll ' >/dev/null 2>/dev/null; then
+	KITTARGET="kitdll"
+fi
+
+## If building KitDLL and Tk, must do Tk statically
+### (Well, we don't HAVE to, but it would defeat much of the purpose)
+if [ "${KITTARGET}" = "kitdll" ]; then
+	if echo " ${KITCREATOR_PKGS} " | grep ' tk ' >/dev/null 2>/dev/null; then
+		if [ "${STATICTK}" != "1" -a "${STATICTK}" != "-1" ]; then
+			echo 'Warning: Linking Tk statically because you are building KitDLL' 2>&1
+			echo '         Set STATICTK to -1 if you really want to link Tk dynamically.' >&2
+
+			STATICTK="1"
+			export STATICTK
+		fi
+	fi
+
+	if echo " ${KITCREATOR_PKGS} " | grep ' mk4tcl ' >/dev/null 2>/dev/null; then
+		if [ -z "${STATICMK4}" ]; then
+			echo 'Warning: Linking Mk4tcl dynamically because you are building KitDLL' 2>&1
+			echo '         Set STATICMK4 to make this message go away.' >&2
+			echo '         Set STATICMK4 to 1 if you really want to link Mk4tcl statically (normal default).' >&2
+			echo '         Set STATICMK4 to 0 to link Mk4tcl dynamically if possible (this is what is happening now).' >&2
+			echo '         Set STATICMK4 to -1 to build dynamically.' >&2
+
+			STATICMK4="0"
+			export STATICMK4
+		fi
+	fi
+fi
+
+# Find Windows resource-related files
+if [ -f "kit.ico" ]; then
+	KITCREATOR_ICON="$(pwd)/kit.ico"
+else
+	KITCREATOR_ICON="$(echo "$(pwd)/kitsh/buildsrc"/kitsh-*/tclkit.ico)"
+fi
+if [ -f "kit.rc" ]; then
+	KITCREATOR_RC="$(pwd)/kit.rc"
+else
+	KITCREATOR_RC="$(echo "$(pwd)/kitsh/buildsrc"/kitsh-*/kit.rc)"
+fi
+export KITCREATOR_ICON KITCREATOR_RC
+
+# Determine how we invoke a Tcl interpreter
+if [ -z "${TCLSH_NATIVE}" ]; then
+	TCLSH_NATIVE="false"
+fi
+for testsh in "${TCLSH_NATIVE}" tclsh tclsh8.4 tclsh8.5 tclsh8.6 "${TCLKIT:-tclkit}"; do
+	if echo 'exit 0' | "${testsh}" >/dev/null 2>/dev/null; then
+		TCLSH_NATIVE="${testsh}"
+
+		break
+	fi
+done
+export TCLSH_NATIVE
+
+# Function to determine what build mode is being used
+function useCommonBuildSystem() {
+	local script
+
+	script="$1"
+
+	if grep -i '^# *BuildCompatible: *KitCreator *$' "${script}" >/dev/null 2>/dev/null; then
+		return 0
+	fi
+
+	return 1
+}
+
+# Cleanup build logs
+for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
+	rm -f "${pkg}/build.log"
+done
+
+# Verify that each component is happy with the environment
+validatefailed="0"
+for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
+	failed='0'
+	if [ -f "${pkg}/.success" ]; then
+		continue
+	fi
+
+	if [ -x "${pkg}/validate.sh" ]; then
+		(
+			cd "${pkg}" >/dev/null 2>/dev/null || exit 1
+
+			./validate.sh 3>&1 4>&2 >> build.log 2>&1 || exit 1
+		) || failed="1"
+
+		if [ "${failed}" = '1' ]; then
+			echo "Failed pre-requisite check for ${pkg}" >&2
+
+			validatefailed='1'
+		fi
+	fi
+done
+
+if [ "${validatefailed}" = '1' ]; then
+	exit 1
+fi
+
+# Do build
+failedpkgs=""
+buildfailed="0"
+for pkg in tcl tclvfs zlib ${KITCREATOR_PKGS} kitsh; do
+	failed="0"
+	if [ -f "${pkg}/.success" ]; then
+		echo -n "Skipping ${pkg} ..."
+	else
+		echo -n "Building ${pkg} ..."
+
+		(
+			cd "${pkg}" >/dev/null 2>/dev/null || exit 1
+
+			build_script='./build.sh'
+			if [ -x 'kitcreator-build.sh' ]; then
+				build_script='./kitcreator-build.sh'
+			fi
+
+			if [ -f "${build_script}" ]; then
+				build_scripts=("${build_script}")
+			else
+				build_scripts=($(echo build-kitcreator-*.sh))
+			fi
+
+			call_pkg_init='1'
+			for build_script in "${build_scripts[@]}"; do
+				if useCommonBuildSystem "${build_script}"; then
+					(
+						. ../common/common.sh
+						. "${build_script}"
+
+						set -x
+
+						if [ "${call_pkg_init}" = '1' ]; then
+							init || die 'init failed'
+						fi
+
+						predownload || die 'predownload failed'
+						download || die 'download failed'
+						postdownload || die 'postdownload failed'
+
+						extract || die 'extract failed'
+
+						apply_patches || die 'apply patches failed'
+
+						cd "${workdir}" || exit 1
+
+						preconfigure || die 'preconfigure failed'
+						configure || die 'configure failed'
+						postconfigure || die 'postconfigure failed'
+
+						prebuild || die 'prebuild failed'
+						build || die 'build failed'
+						postbuild || die 'postbuild failed'
+
+						preinstall || die 'preinstall failed'
+						install || die 'install failed'
+						postinstall || die 'postinstall failed'
+
+						createruntime || die 'createruntime failed'
+
+						set +x
+					) 3>&1 4>&2 >> build.log 2>&1 || exit 1
+				else
+					"${build_script}" 3>&1 4>&2 >> build.log 2>&1 || exit 1
+				fi
+
+				call_pkg_init='0'
+			done
+		) || failed="1"
+	fi
+
+	if [ "${failed}" = "1" ]; then
+		echo " failed."
+		failedpkgs="${failedpkgs} ${pkg}"
+	else
+		echo " done."
+	fi
+
+	case "${pkg}" in
+		tcl)
+			TCLCONFIGDIR=$(find "$(pwd)/tcl/build" -name tclConfig.sh | head -1 | sed 's@/[^/]*$@@')
+			TCLCONFIGDIRTAIL="$(basename "${TCLCONFIGDIR}")"
+			export TCLCONFIGDIR TCLCONFIGDIRTAIL
+
+			# If Tcl was compiled with threads enabled pass --enable-threads to all sub-projects
+			if [ "${KITCREATOR_ADD_ENABLE_THREADS:-1}" != '0' ]; then
+				if [ "$( . "${TCLCONFIGDIR}/tclConfig.sh" && echo "${TCL_THREADS:-0}" )" = '1' ]; then
+					CONFIGUREEXTRA="${CONFIGUREEXTRA} --enable-threads"
+				fi
+			fi
+			;;
+	esac
+
+	if [ "${failed}" = "1" ]; then
+		buildfailed="1"
+	else
+		touch "${pkg}/.success"
+	fi
+done
+
+if [ -n "${failedpkgs}" ]; then
+	echo "Failed to build:${failedpkgs}"
+fi
+
+if [ "${buildfailed}" != "0" ]; then
+	echo 'WARNING: Build is likely incomplete or failed.' >&2
+fi
+
+cp 'kitsh/build'/kitsh-*/libtclkit* . >/dev/null 2>/dev/null
+cp 'kitsh/build'/kitsh-*/kit "tclkit-${TCLVERS}" >/dev/null 2>/dev/null
+if [ ! -f "tclkit-${TCLVERS}" ]; then
+	cp 'kitsh/build'/kitsh-*/kit.exe "tclkit-${TCLVERS}" >/dev/null 2>/dev/null
+fi
+
+for postscript in common/post/*; do
+	if [ ! -f "${postscript}" ]; then
+		continue
+	fi
+
+	"${postscript}"
+done
+
+exit "${buildfailed}"

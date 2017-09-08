@@ -1,0 +1,32 @@
+diff --git a/generic/dom.h b/generic/dom.h
+index b10e729..145366f 100644
+--- a/generic/dom.h
++++ b/generic/dom.h
+@@ -94,6 +94,14 @@
+ #endif
+ 
+ /*
++ * Beginning with 8.6, interp->errorLine isn't public visible anymore
++ * (TIP 330)
++ */
++#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION < 6)
++# define Tcl_GetErrorLine(interp) (interp)->errorLine
++#endif
++
++/*
+  * Starting with Tcl 8.2 the Tcl_Panic() is defined properly
+  * over the stubs table.
+  * Also, we have a proper Tcl_GetString() shortcut afterwards.
+diff --git a/generic/tcldom.c b/generic/tcldom.c
+index 0126f54..a4578ab 100644
+--- a/generic/tcldom.c
++++ b/generic/tcldom.c
+@@ -5934,7 +5934,7 @@ int tcldom_EvalLocked (
+     if (ret == TCL_ERROR) {
+         char msg[64 + TCL_INTEGER_SPACE];
+         sprintf(msg, "\n    (\"%s %s\" body line %d)", Tcl_GetString(objv[0]),
+-                Tcl_GetString(objv[1]), interp->errorLine);
++                Tcl_GetString(objv[1]), Tcl_GetErrorLine(interp));
+         Tcl_AddErrorInfo(interp, msg);
+     }
+ 

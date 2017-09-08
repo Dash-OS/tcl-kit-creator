@@ -1,0 +1,28 @@
+diff -uNr tk8.4.19.orig/library/listbox.tcl tk8.4.19-1rsk/library/listbox.tcl
+--- tk8.4.19.orig/library/listbox.tcl	2006-01-25 12:21:41.000000000 -0600
++++ tk8.4.19-1rsk/library/listbox.tcl	2010-09-18 16:18:34.000000000 -0500
+@@ -191,10 +191,6 @@
+     bind Listbox <Shift-Option-MouseWheel> {
+         %W xview scroll [expr {-10 * (%D)}] units
+     }
+-} else {
+-    bind Listbox <MouseWheel> {
+-        %W yview scroll [expr {- (%D / 120) * 4}] units
+-    }
+ }
+ 
+ if {"x11" eq [tk windowingsystem]} {
+diff -uNr tk8.4.19.orig/library/text.tcl tk8.4.19-1rsk/library/text.tcl
+--- tk8.4.19.orig/library/text.tcl	2006-09-10 12:07:36.000000000 -0500
++++ tk8.4.19-1rsk/library/text.tcl	2010-09-18 16:18:30.000000000 -0500
+@@ -467,10 +467,6 @@
+     bind Text <Shift-Option-MouseWheel> {
+         %W xview scroll [expr {-10 * (%D)}] units
+     }
+-} else {
+-    bind Text <MouseWheel> {
+-        %W yview scroll [expr {- (%D / 120) * 4}] units
+-    }
+ }
+ 
+ if {"x11" eq [tk windowingsystem]} {

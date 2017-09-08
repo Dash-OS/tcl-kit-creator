@@ -1,0 +1,16 @@
+#! /bin/bash
+
+WEBROOTDIR="/web/rkeene/devel/kitcreator/kitbuild"
+export WEBROOTDIR
+
+rm -rf "${WEBROOTDIR}/tests"
+
+mkdir -p "${WEBROOTDIR}" || exit 1
+mkdir -p "${WEBROOTDIR}/tests" || exit 1
+
+cp index.ttml "${WEBROOTDIR}/"
+cp tests/* "${WEBROOTDIR}/tests/"
+
+ln -s ../../index.ttml "${WEBROOTDIR}/tests/"
+
+exit 0

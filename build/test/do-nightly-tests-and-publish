@@ -1,0 +1,109 @@
+#! /bin/bash
+
+# Update PATH to include path to Tclkit, otherwise cross-compiles will fail
+PATH="${PATH}:/home/rkeene/bin:/usr/local/bin"
+export PATH
+
+# Define build and web paths
+KITCREATORFOSSIL="/web/customers/kitcreator.rkeene.org/repo/kitcreator.repo"
+WEBROOTDIR="/web/rkeene/devel/kitcreator/kitbuild"
+MARKERFILE="/web/customers/kitcreator.rkeene.org/repo/__AUTO_TESTS_RUNNING__"
+TMPWORKDIR="${TMPDIR:-/var/tmp}/kitcreator-test-$$${RANDOM}${RANDOM}${RANDOM}"
+export KITCREATORFOSSIL WEBROOTDIR MARKERFILE TMPWORKDIR
+
+# Determine change of fossil revision on trunk
+FOSSIL_CHANGE="$(fossil timeline --repository "${KITCREATORFOSSIL}" children trunk -n 1 -t ci | grep '^[0-9:]* \[' | sed 's@^[0-9:]* \[\([0-9a-f]*\)\].*$@\1@')"
+TESTNAME="fossil_${FOSSIL_CHANGE}"
+export FOSSIL_CHANGE TESTNAME
+
+# Verify sanity
+issane=1
+if [ -z "${FOSSIL_CHANGE}" ]; then
+	echo "Unable to determine name of latest revision, likely missing Kitcreator Fossil Repo: ${KITCREATORFOSSIL}" >&2
+
+	issane=0
+fi
+
+if [ ! -d "${WEBROOTDIR}" ]; then
+	echo "Missing Web Root Directory: ${WEBROOTDIR}" >&2
+
+	issane=0
+fi
+
+if [ "${issane}" = '0' ]; then
+	exit 1
+fi
+
+# On Wednesday, do a distclean to force redownloading everything (mainly
+# for CVS Head) and force a rebuild to ensure up-to-date build status
+if [ "$(date '+%u')" != "3" ]; then
+	if [ -d "${WEBROOTDIR}/${TESTNAME}" ]; then
+		if [ "$1" != "force" ]; then
+			# Don't re-run the tests if nothing has changed
+			exit 0
+		fi
+	fi
+fi
+
+# Only run one at a time
+if [ -f "${MARKERFILE}" ]; then
+	exit 1
+fi
+touch "${MARKERFILE}"
+
+# Change to temporary directory to build
+mkdir -p "${TMPWORKDIR}"
+chmod 700 "${TMPWORKDIR}"
+
+cd "${TMPWORKDIR}" || exit 1
+
+# Define clean-up handler
+function die () {
+	echo "$1" >&2
+
+	cd /
+
+	rm -rf "${TMPWORKDIR}"
+
+	exit 1
+}
+
+# Download latest tarball
+wget -O 'kitcreator-trunk-tip.tar.gz' -o /dev/null "http://kitcreator.rkeene.org/fossil/tarball/kitcreator-trunk-tip.tar.gz?uuid=${FOSSIL_CHANGE}"
+
+tar -xf kitcreator-trunk-tip.tar.gz || die 'Tarball Extraction Failed'
+
+cd kitcreator-trunk-tip || die 'Tarball Sanity Failed'
+
+# Prepare source
+./build/pre.sh >/dev/null 2>/dev/null
+
+# Start the tests
+cd build/test || die 'Missing test suite'
+
+if [ ! -x test -o ! -x publish-tests ]; then
+	die 'Missing scripts, aborting.'
+fi
+
+# Clean builds
+rm -rf kits
+
+# Run tests
+nice -n 20 ./test >/dev/null 2>/dev/null
+
+# Clean old auto-generated published results
+rm -rf "${WEBROOTDIR}"/svn_r*/ "${WEBROOTDIR}"/fossil_*/
+
+# Publish New Results
+./publish-tests "${TESTNAME}"
+
+# Create nightly symlink
+rm -f "${WEBROOTDIR}/nightly"
+ln -s "${TESTNAME}" "${WEBROOTDIR}/nightly"
+
+# Clean
+rm -f "${MARKERFILE}"
+cd /
+rm -rf "${TMPWORKDIR}"
+
+exit 0

@@ -1,0 +1,26 @@
+Binary files metakit-2.4.9.7.orig/unix/.Makefile.in.swp and metakit-2.4.9.7-1rsk/unix/.Makefile.in.swp differ
+Binary files metakit-2.4.9.7.orig/unix/.configure.in.swp and metakit-2.4.9.7-1rsk/unix/.configure.in.swp differ
+diff -uNr metakit-2.4.9.7.orig/unix/configure metakit-2.4.9.7-1rsk/unix/configure
+--- metakit-2.4.9.7.orig/unix/configure	2007-06-15 18:26:40.000000000 -0500
++++ metakit-2.4.9.7-1rsk/unix/configure	2011-03-09 07:39:59.000000000 -0600
+@@ -1482,7 +1482,7 @@
+ if test $SHARED_BUILD = 1; then
+   SHLIB_FLAGS="-shared"
+   SHLIB_CFLAGS="-fPIC -DUSE_TCL_STUBS"
+-  SHLIB_LD="g++ -shared"
++  SHLIB_LD="${CXX} -shared"
+ else
+   SHLIB_FLAGS=""
+   SHLIB_CFLAGS=""
+diff -uNr metakit-2.4.9.7.orig/unix/configure.in metakit-2.4.9.7-1rsk/unix/configure.in
+--- metakit-2.4.9.7.orig/unix/configure.in	2007-06-15 18:26:40.000000000 -0500
++++ metakit-2.4.9.7-1rsk/unix/configure.in	2011-03-09 07:39:29.000000000 -0600
+@@ -117,7 +117,7 @@
+ if test $SHARED_BUILD = 1; then
+   SHLIB_FLAGS="-shared"
+   SHLIB_CFLAGS="-fPIC -DUSE_TCL_STUBS"
+-  SHLIB_LD="g++ -shared"
++  SHLIB_LD="${CXX} -shared"
+ else
+   SHLIB_FLAGS=""
+   SHLIB_CFLAGS=""

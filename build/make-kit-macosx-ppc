@@ -1,0 +1,3 @@
+#! /bin/sh
+
+./build/make-kit-remote macosx-ppc.build.kitcreator.rkeene.org "$@" --enable-aqua

@@ -1,0 +1,6 @@
+#! /bin/sh
+
+CROSS="arm-slackware-linux-gnueabi"
+export CROSS
+
+./build/make-kit-crosscompile "$@"

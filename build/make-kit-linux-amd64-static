@@ -1,0 +1,10 @@
+#! /bin/sh
+
+CROSS="x86_64-generic-linux-musl"
+CC_ADD="-m64"
+if ! echo " ${KITCREATOR_PKGS} " | grep ' kitdll ' >/dev/null; then
+	KC_KITSH_LDFLAGS="${KC_KITSH_FLAGS} -static"
+fi
+export CROSS CC_ADD KC_KITSH_LDFLAGS
+
+./build/make-kit-crosscompile "$@" --enable-64bit

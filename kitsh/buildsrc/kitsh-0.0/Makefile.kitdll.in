@@ -1,0 +1,41 @@
+OBJS = kitInit.o rechan.o pwb.o zlib.o
+
+# Default target
+all: @TARGET@
+
+-include Makefile.common
+
+kitdll: libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@
+kitdll-static: libtclkit@KITDLL_LIB_VERSION@.a
+
+## DLL Build
+libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@: $(OBJS) $(EXTRA_KIT_DEPS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@ $(OBJS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS) $(LDFLAGS) $(SHOBJLDFLAGS) @WHOLEARCHIVE@ $(ARCHS) @NOWHOLEARCHIVE@ $(LIBS) $(LDFLAGS_ADD)
+	-for striplib in $(STRIPLIBS); do $(OBJCOPY) --weaken "$${striplib}"; done
+	-mv libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@ libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@.safe; \
+		$(CC) $(CPPFLAGS) $(CFLAGS) -o libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@ $(OBJS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS) $(LDFLAGS) $(SHOBJLDFLAGS) @WHOLEARCHIVE@ $(ARCHS) @NOWHOLEARCHIVE@ $(LIBS) || \
+			mv libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@.safe libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@
+	-rm -f libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@.safe
+
+## Static archive build
+libtclkit@KITDLL_LIB_VERSION@.a: $(OBJS) $(EXTRA_KIT_DEPS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS)
+	rm -f libtclkit@KITDLL_LIB_VERSION@.a.new
+	rm -rf __TMP__
+	mkdir __TMP__
+	for arch in $(ARCHS); do ( cd __TMP__ && ar x ../$${arch} ); done
+	$(OBJCOPY) --redefine-sym Tcl_Init=Tcl_InitReal --redefine-sym _Tcl_Init=_Tcl_InitReal __TMP__/tclInterp.o
+	$(AR) cr libtclkit@KITDLL_LIB_VERSION@.a.new $(OBJS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS) __TMP__/*.o
+	rm -rf __TMP__
+	$(RANLIB) libtclkit@KITDLL_LIB_VERSION@.a.new
+	mv libtclkit@KITDLL_LIB_VERSION@.a.new libtclkit@KITDLL_LIB_VERSION@.a
+
+# Test driver
+tclsh.o: tclsh.c
+tclsh: tclsh.o $(EXTRA_OBJS) @TARGET@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o tclsh tclsh.o $(EXTRA_OBJS) -L. -ltclkit@KITDLL_LIB_VERSION@ $(LDRUNPATH)
+
+wish.o: wish.c
+wish: wish.o $(EXTRA_OBJS) libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WISH_CFLAGS) -o wish wish.o $(EXTRA_OBJS) -L. -ltclkit@KITDLL_LIB_VERSION@ $(LDRUNPATH)
+
+.PHONY: kitdll kitdll-static

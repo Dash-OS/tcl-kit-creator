@@ -1,0 +1,13 @@
+diff -uNr tclfossil_trunk.orig//generic/tcl.h tclfossil_trunk-1rsk//generic/tcl.h
+--- tclfossil_trunk.orig//generic/tcl.h	2012-05-04 16:11:58.000000000 -0500
++++ tclfossil_trunk-1rsk//generic/tcl.h	2012-05-06 17:33:17.487466336 -0500
+@@ -475,6 +475,9 @@
+ 	/* Here is a 4-byte gap */
+     } Tcl_StatBuf;
+ #elif defined(HAVE_STRUCT_STAT64) && !defined(__APPLE__)
++#     ifdef HAVE_SYS_STAT_H
++#       include <sys/stat.h>
++#     endif
+     typedef struct stat64 Tcl_StatBuf;
+ #else
+     typedef struct stat Tcl_StatBuf;

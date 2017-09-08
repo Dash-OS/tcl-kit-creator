@@ -1,0 +1,7 @@
+#! /bin/sh
+
+CROSS="x86_64-redhat5-linux"
+CC_ADD='-m32'
+export CROSS CC_ADD
+
+./build/make-kit-crosscompile "$@"

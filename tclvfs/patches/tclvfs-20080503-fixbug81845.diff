@@ -1,0 +1,35 @@
+diff -uNr tclvfs-20080503.orig/pkgIndex.tcl.in tclvfs-20080503/pkgIndex.tcl.in
+--- tclvfs-20080503.orig/pkgIndex.tcl.in	2008-04-16 01:59:24.000000000 +0200
++++ tclvfs-20080503/pkgIndex.tcl.in	2016-01-29 15:01:44.000000000 +0100
+@@ -49,6 +49,7 @@
+ package ifneeded vfs::urltype 1.0 [list source [file join $dir vfsUrl.tcl]]
+ package ifneeded vfs::webdav  0.1 [list source [file join $dir webdavvfs.tcl]]
+ package ifneeded vfs::tk      0.5 [list source [file join $dir tkvfs.tcl]]
++package ifneeded vfs::utils   0.5 [list source [file join $dir vfsUtils.tcl]]
+ #
+ # Virtual filesystems based on the template vfs:
+ #
+
+diff -uNr tclvfs-20080503.orig/library/vfsUtils.tcl tclvfs-20080503/library/vfsUtils.tcl 
+--- tclvfs-20080503.orig/library/vfsUtils.tcl	2004-07-05 01:42:04.000000000 +0200
++++ tclvfs-20080503/library/vfsUtils.tcl	2016-01-29 14:45:20.000000000 +0100
+@@ -4,6 +4,7 @@
+
+ package require Tcl 8.4
+ package require vfs
++package provide vfs::utils 0.5
+
+ namespace eval ::vfs {
+     variable debug 0
+
+diff -uNr tclvfs-20080503.orig/library/zipvfs.tcl tclvfs-20080503/library/zipvfs.tcl 
+--- tclvfs-20080503.orig/library/zipvfs.tcl	2008-04-15 23:11:53.000000000 +0200
++++ tclvfs-20080503/library/zipvfs.tcl	2016-01-29 15:01:42.000000000 +0100
+@@ -3,6 +3,7 @@
+ package provide vfs::zip 1.0.1
+
+ package require vfs
++package require vfs::utils 0.5
+
+ # Using the vfs, memchan and Trf extensions, we ought to be able
+ # to write a Tcl-only zip virtual filesystem.  What we have below

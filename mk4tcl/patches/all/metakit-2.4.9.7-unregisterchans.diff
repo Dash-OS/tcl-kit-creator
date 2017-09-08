@@ -1,0 +1,14 @@
+diff -uNr metakit-2.4.9.7.orig/tcl/mk4tcl.cpp metakit-2.4.9.7-1unregisterchans/tcl/mk4tcl.cpp
+--- metakit-2.4.9.7.orig/tcl/mk4tcl.cpp	2007-06-18 16:05:24.000000000 -0500
++++ metakit-2.4.9.7-1unregisterchans/tcl/mk4tcl.cpp	2014-05-20 00:55:56.857516999 -0500
+@@ -737,6 +737,10 @@
+ MkWorkspace::~MkWorkspace() {
+   CleanupCommands();
+ 
++  for (MkChannel *chan = _chanList; chan; chan = chan->_next) {
++    Tcl_UnregisterChannel(_interp, chan->_chan);
++  }
++
+   for (int i = _items.GetSize(); --i >= 0;)
+     delete Nth(i);
+ 

@@ -1,0 +1,545 @@
+#! /bin/bash
+
+VERSIONS="8.5.19 8.6.7 fossil_trunk"
+
+# Find the base directory
+for x in 1 2 3 4 __fail__; do
+	if [ "${x}" = "__fail__" ]; then
+		echo 'Unable to find KitCreator, aborting.' >&2
+
+		exit 1
+	fi
+
+	if [ -x kitcreator ]; then
+		break
+	fi
+
+	cd ..
+done
+
+ROOTDIR="$(pwd)"
+TESTDIR="${ROOTDIR}/build/test"
+export ROOTDIR TESTDIR
+
+# Handle command-line arguments
+if [ "$1" = "clean" ]; then
+	rm -rf "${TESTDIR}/kits"
+fi
+
+# Create place to put kits
+mkdir "${TESTDIR}/kits" >/dev/null 2>/dev/null
+mkdir "${TESTDIR}/kits/failed" >/dev/null 2>/dev/null
+if [ ! -d "${TESTDIR}/kits" ]; then
+	echo 'Unable to create kits/ directory, aborting.' >&2
+
+	exit 1
+fi
+
+# Cleanup
+for file in "${TESTDIR}"/kits/*.log; do
+	if echo "${file}" | grep -- '-build.log$' >/dev/null; then
+		continue
+	fi
+
+	rm -f "${file}"
+done
+
+# Disable WINE debugging
+WINEPREFIX32="${TESTDIR}/.wine"
+WINEPREFIX64="${TESTDIR}/.wine64"
+export WINEPREFIX32 WINEPREFIX64
+rm -rf "${WINEPREFIX32}" "${WINEPREFIX64}"
+mkdir "${WINEPREFIX32}" "${WINEPREFIX64}"
+
+cat << \_EOF_ > "${WINEPREFIX32}/update-reg"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\AeDebug]
+"Auto"=dword:00000001
+"Debugger"="false"
+_EOF_
+cp "${WINEPREFIX32}/update-reg" "${WINEPREFIX64}/update-reg"
+
+WINEPREFIX="${WINEPREFIX32}" regedit "${WINEPREFIX32}/update-reg" >/dev/null 2>/dev/null
+WINEPREFIX="${WINEPREFIX64}" regedit "${WINEPREFIX64}/update-reg" >/dev/null 2>/dev/null
+
+# Start Xvfb for X11-based tests
+XVFB_PID="$(
+	Xvfb :31 -screen 0 800x600x24 -nolisten tcp >/dev/null 2>/dev/null &
+	echo "$!"
+)"
+DISPLAY=:31
+export DISPLAY
+
+if [ -z "${KC_TEST_KITS}" ]; then
+	kits="linux-amd64 linux-amd64-zip linux-amd64-threaded linux-amd64-threaded-zip linux-amd64-statictk linux-amd64-notk linux-amd64-threaded-notk linux-amd64-threaded-zip-notk linux-amd64-nomk4 linux-amd64-debug min min-static linux-amd64-kitdll linux-amd64-threaded-kitdll linux-amd64-notk-kitdll linux-amd64-nomk4-kitdll linux-amd64-nomk4-notk-kitdll linux-amd64-threaded-nomk4-kitdll linux-amd64-threaded-notk-nomk4-kitdll linux-amd64-debug-kitdll min-kitdll win32-i586 win32-i586-zip win32-i586-threaded win32-i586-threaded-zip win32-i586-notk win32-i586-threaded-notk win32-i586-nomk4 win32-i586-kitdll win32-i586-threaded-kitdll win32-i586-notk-kitdll win32-i586-nomk4-kitdll win32-i586-nomk4-notk-kitdll win32-i586-threaded-nomk4-kitdll win32-i586-threaded-notk-nomk4-kitdll win64-amd64 win64-amd64-zip win64-amd64-threaded win64-amd64-threaded-zip win64-amd64-notk win64-amd64-threaded-notk win64-amd64-nomk4 win64-amd64-kitdll win64-amd64-threaded-kitdll win64-amd64-notk-kitdll win64-amd64-nomk4-kitdll win64-amd64-nomk4-notk-kitdll win64-amd64-threaded-nomk4-kitdll win64-amd64-threaded-notk-nomk4-kitdll linux-mipsel-notk linux-mipsel-notk-kitdll linux-i386 linux-i386-debug linux-i386-kitdll linux-i386-debug-kitdll linux-i386-notk linux-i386-notk-debug linux-i386-notk-kitdll linux-i386-notk-debug-kitdll solaris-i386 solaris-i386-debug solaris-i386-kitdll solaris-i386-debug-kitdll solaris-amd64 solaris-amd64-debug solaris-amd64-kitdll solaris-amd64-debug-kitdll solaris-sparc solaris-sparc-debug solaris-sparc-kitdll solaris-sparc-debug-kitdll solaris-sparc64 solaris-sparc64-debug solaris-sparc64-kitdll solaris-sparc64-debug-kitdll freebsd-amd64 freebsd-amd64-debug freebsd-amd64-kitdll freebsd-amd64-debug-kitdll netbsd-i386-notk netbsd-i386-notk-debug netbsd-i386-notk-kitdll netbsd-i386-notk-debug-kitdll netbsd-amd64 netbsd-amd64-debug netbsd-amd64-kitdll netbsd-amd64-debug-kitdll android-arm-notk android-arm-notk-debug android-arm-notk-kitdll android-arm-notk-debug-kitdll"
+else
+	kits="${KC_TEST_KITS}"
+fi
+
+failed=""
+for kit in $kits; do
+	kitcreator="./kitcreator"
+	args=""
+	runnable="1"
+	iszip="0"
+	statictk="0"
+	notk="0"
+	nomk4="0"
+	xcompile="0"
+	kitdll="0"
+	kitruncmd=""
+
+	# Handle base configuration
+	os="$(uname -s | dd conv=lcase 2>/dev/null)"
+	cpu="$(uname -m | dd conv=lcase 2>/dev/null | sed 's@x86_64@amd64@;s@i.86@i386@')"
+	case "${kit}" in
+		normal|normal-*)
+			kit="$(echo "${kit}" | sed "s@^normal@$os-$cpu@")"
+			;;
+		min|min-kitdll)
+			kitcreator="./build/make-minkit"
+			iszip="1"
+			notk="1"
+			kit="$(echo "${kit}" | sed "s@^min@$os-$cpu-min@")"
+			;;
+		min-static)
+			kitcreator="./build/make-minkit-static"
+			iszip="1"
+			notk="1"
+			kit="${os}-${cpu}-min-static"
+			;;
+		win32|win32-*)
+			kitcreator="./build/make-kit-win32"
+			xcompile="1"
+			runnable="1"
+			kitruncmd="wine"
+			;;
+		win64|win64-*)
+			kitcreator="./build/make-kit-win64"
+			xcompile="1"
+			runnable="1"
+			kitruncmd="wine64"
+			;;
+		linux-mipsel-min|linux-mipsel-min-kitdll)
+			kitcreator="./build/make-kit-linux-mipsel"
+			runnable="0"
+			xcompile="1"
+			notk="1"
+			iszip="1"
+			;;
+		linux-amd64|linux-amd64-*)
+			kitcreator="./build/make-kit-linux-amd64"
+			xcompile="0"
+			runnable="1"
+			;;
+		linux-i386|linux-i386-*)
+			kitcreator="./build/make-kit-linux-i386"
+			xcompile="1"
+			runnable="0"
+			;;
+		android-arm|android-arm-*|\
+		linux-mipsel|linux-mipsel-*|\
+		solaris-i386|solaris-i386-*|\
+		solaris-amd64|solaris-amd64-*|\
+		solaris-sparc|solaris-sparc-*|\
+		solaris-sparc64|solaris-sparc64-*|\
+		freebsd-amd64|freebsd-amd64-*|\
+		netbsd-i386|netbsd-i386-*|\
+		netbsd-amd64|netbsd-amd64-*|\
+		hpux-hppa64|hpux-hppa64-*)
+			platform="$(echo "${kit}" | cut -f 1-2 -d '-')"
+			kitcreator="./build/make-kit-${platform}"
+			runnable="0"
+			xcompile="1"
+			iszip="0"
+
+			;;
+	esac
+
+	if echo "${kit}" | egrep -- '-(hppa64|amd64|sparc64)(-|$)' >/dev/null; then
+		args="${args} --enable-64bit"
+	fi
+
+	case "${kitruncmd}" in
+		wine)
+			WINEPREFIX="${WINEPREFIX32}"
+			export WINEPREFIX
+			;;
+		wine64)
+			WINEPREFIX="${WINEPREFIX64}"
+			export WINEPREFIX
+			;;
+	esac
+
+	if [ "${xcompile}" != "0" ]; then
+		kit="${kit}-xcompile"
+	fi
+
+	# Handle additional configuration
+	tempkit="-${kit}-"
+	for try in 1 2 3 4 5 6 7 8 9; do
+		case "-${tempkit}-" in
+			*-threaded-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-threaded-@-@')"
+				args="${args} --enable-threads"
+				;;
+			*-zip-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-zip-@-@')"
+				args="${args} --enable-kit-storage=zip"
+				iszip="1"
+				;;
+			*-statictk-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-statictk-@-@')"
+				if [ "${notk}" = "0" ]; then
+					statictk="1"
+				else
+					echo "${kit}: Unable to create StaticTk and NoTk, ignoring StaticTk" >&2
+				fi
+				;;
+			*-notk-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-notk-@-@')"
+				if [ "${statictk}" = "0" ]; then
+					notk="1"
+				else
+					echo "${kit}: Unable to create StaticTk and NoTk, ignoring NoTk" >&2
+				fi
+				;;
+			*-nomk4-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-nomk4-@-@')"
+				nomk4="1"
+				iszip="1"
+				;;
+			*-kitdll-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-kitdll-@-@')"
+				kitdll="1"
+				;;
+			*-debug-*)
+				tempkit="$(echo "${tempkit}" | sed 's@-debug-@-@')"
+				args="${args} --enable-symbols"
+				;;
+		esac
+	done
+
+	if [ "${kitdll}" = "1" ]; then
+		# Currently no KitDLL uses Zip
+		iszip="0"
+	fi
+
+	for version in ${VERSIONS}; do
+		# Work around changes in default behaviour
+		case "${version}" in
+			8.6.*|cvs_HEAD)
+				kit="$(echo "${kit}" | sed 's@-threaded@-unthreaded@')"
+				args="$(echo "${args}" | sed 's@ --enable-threads@ --disable-threads@')"
+				;;
+		esac
+
+		# Create Tclkit
+		if [ "${kitdll}" = "1" ]; then
+			createdkit="libtclkit*.dll libtclkit*.*"
+			outputname="${TESTDIR}/kits/libtclkit-${version}-${kit}"
+			failoutputname="${TESTDIR}/kits/failed/libtclkit-${version}-${kit}"
+			sdk="libtclkit-sdk-${version}.tar.gz"
+		else
+			createdkit="tclkit-${version}"
+			outputname="${TESTDIR}/kits/tclkit-${version}-${kit}"
+			failoutputname="${TESTDIR}/kits/failed/tclkit-${version}-${kit}"
+			sdk=''
+		fi
+		buildlog="${outputname}-build.log"
+		failbuildlog="${failoutputname}-build.log"
+		testresultslog="${outputname}-tests.log"
+
+		if [ ! -f "${outputname}" ]; then
+			unset KITCREATOR_PKGS STATICTK STRIP
+
+			if [ -f "${failoutputname}" ]; then
+				echo "Skipping rebuilding failed kit ${version}/${kit} ..."
+
+				failed="${failed} ${version}/${kit}-build"
+
+				continue
+			fi
+
+			rm -f tclsh
+			./kitcreator clean >/dev/null 2>/dev/null
+
+			echo "Creating Tclkit ${version}/${kit}..."
+			echo " *** Build started $(whoami)@$(hostname) on $(date)" > "${buildlog}"
+			echo '' >> "${buildlog}"
+			echo " *** Build Script" >> "${buildlog}"
+
+			if [ "${notk}" = "1" ]; then
+				KITCREATOR_PKGS='itcl mk4tcl'
+			fi
+
+			if [ "${nomk4}" = "1" ]; then
+				if [ -z "${KITCREATOR_PKGS}" ]; then
+					KITCREATOR_PKGS='itcl tk'
+				else
+					KITCREATOR_PKGS="$(echo "${KITCREATOR_PKGS}" | sed 's@mk4tcl@@')"
+				fi
+			fi
+
+			if [ "${kitdll}" = "1" ]; then
+				if [ -z "${KITCREATOR_PKGS}" ]; then
+					KITCREATOR_PKGS='tk itcl mk4tcl kitdll'
+				else
+					KITCREATOR_PKGS="${KITCREATOR_PKGS} kitdll"
+				fi
+			fi
+
+			export KITCREATOR_PKGS
+
+			if [ -n "${KITCREATOR_PKGS}" ]; then
+				echo "  KITCREATOR_PKGS=\"${KITCREATOR_PKGS}\"" >> "${buildlog}"
+				echo "  export KITCREATOR_PKGS" >> "${buildlog}"
+			fi
+
+			if [ "${statictk}" = "1" ]; then
+				STATICTK="1"
+				export STATICTK
+
+				echo "  STATICTK=\"${STATICTK}\"" >> "${buildlog}"
+				echo "  export STATICTK" >> "${buildlog}"
+			fi
+
+			if echo "${args}" | grep -- '--enable-symbols' >/dev/null; then
+				STRIP='true'
+				export STRIP
+
+				echo "  STRIP='true'" >> "${buildlog}"
+				echo "  export STRIP" >> "${buildlog}"
+			fi
+
+			if [ "${kitcreator}" != "./kitcreator" ]; then
+				echo "  mkdir build" >> "${buildlog}"
+
+				# Several build scripts rely on minkit to work
+				if grep './build/make-minkit' "${kitcreator}" >/dev/null 2>/dev/null; then
+					echo "  cat << \__EOF__ > ./build/make-minkit" >> "${buildlog}"
+					sed 's@^@  @'  './build/make-minkit' >> "${buildlog}"
+					echo "  __EOF__" >> "${buildlog}"
+					echo '' >> "${buildlog}"
+				fi
+
+				# Several build scripts rely on make-kit-crosscompile to work
+				if grep './build/make-kit-crosscompile' "${kitcreator}" >/dev/null 2>/dev/null; then
+					echo "  cat << \__EOF__ > ./build/make-kit-crosscompile" >> "${buildlog}"
+					sed 's@^@  @'  './build/make-kit-crosscompile' >> "${buildlog}"
+					echo "  __EOF__" >> "${buildlog}"
+					echo '' >> "${buildlog}"
+				fi
+
+				echo "  cat << \__EOF__ > ${kitcreator}" >> "${buildlog}"
+				sed 's@^@  @'  "${kitcreator}" >> "${buildlog}"
+				echo "  __EOF__" >> "${buildlog}"
+				echo '' >> "${buildlog}"
+			fi
+			echo "  \"${kitcreator}\" \"${version}\" ${args}" >> "${buildlog}"
+			echo '' >> "${buildlog}"
+			echo '' >> "${buildlog}"
+			echo '' >> "${buildlog}"
+			echo " *** Build Results" >> "${buildlog}"
+			echo '' >> "${buildlog}"
+
+			buildfailed="0"
+			"${kitcreator}" "${version}" ${args} >> "${buildlog}" 2>&1 || buildfailed="1"
+			grep -n '^' */build.log >> "${buildlog}" 2>&1
+
+			if [ "${kitdll}" = "1" ]; then
+				# Create test drivers for KitDLL
+				(
+					echo ""
+					echo ""
+					echo ""
+					echo " *** Building KitDLL test driver (tclsh)"
+					echo ""
+
+					cd kitsh/build/kitsh-*/ || exit 1
+					make tclsh
+					cp tclsh ../../../
+				) >> "${buildlog}" 2>&1
+			fi
+
+			# Perform wildcard expansion
+			createdkit="$(ls -f1 ${createdkit} 2>/dev/null | grep -v '\.tar\.gz$' | head -n 1)"
+
+			if [ ! -f "${createdkit}" ]; then
+				echo "Failed to create kit ${version}/${kit}" >&2
+
+				failed="${failed} ${version}/${kit}-build"
+
+				touch "${failoutputname}"
+				mv "${buildlog}" "${failbuildlog}"
+
+				rm -f tclsh
+
+				continue
+			fi
+
+			# Verify sanity of created kit
+			issane=1
+
+			## Verify that Win32 builds are of correct type
+			## Verify that DLL builds are of correct type
+			case "-${version}-${kit}-" in
+				*-win[36][24]-kitdll-*|*-win[36][24]-*-kitdll-*)
+					if ! file "${createdkit}" | grep 'MS Windows' | grep '(DLL)' >/dev/null; then
+						issane=0
+					fi
+					;;
+				*-kitdll-*)
+					if ! file "${createdkit}" | grep 'shared object' >/dev/null; then
+						issane=0
+					fi
+					;;
+				*-win[36][24]-notk-*|*-win[36][24]-*-notk-*)
+					if ! file "${createdkit}" | grep 'MS Windows' | grep '(console)' >/dev/null; then
+						echo "Kit failed sanity check for being a console application" >&2
+						issane=0
+					fi
+					;;
+				*-win[36][24]-*)
+					if ! file "${createdkit}" | grep 'MS Windows' | grep '(GUI)' >/dev/null; then
+						echo "Kit failed sanity check for being a GUI application" >&2
+						issane=0
+					fi
+					;;
+			esac
+
+			## Verify the build completed without warnings
+			if [ "${buildfailed}" = "1" ]; then
+				echo "Kit failed sanity check for Building" >&2
+
+				issane=0
+			fi
+
+			# Make note of sanity failure
+			if [ "${issane}" != "1" ]; then
+				echo "Kit failed sanity ${version}/${kit}" >&2
+
+				failed="${failed} ${version}/${kit}-sanity"
+
+				mv "${createdkit}" "${failoutputname}"
+				mv "${buildlog}" "${failbuildlog}"
+
+				rm -f tclsh
+
+				continue
+			fi
+
+			# Rename created kit to final destination
+			mv "${createdkit}" "${outputname}"
+			if [ -f "tclsh" ]; then
+				mv "tclsh" "${outputname}-tclsh"
+			fi
+
+			# For KitDLL, make a note of the original name
+			if [ "${kitdll}" = "1" ]; then
+				echo "${createdkit}" > "${outputname}-origname"
+
+				if [ -f "${sdk}" ]; then
+					mv "${sdk}" "${outputname}-sdk.tar.gz"
+					openssl sha1 "${outputname}-sdk.tar.gz" | sed 's@^.*= @@' > "${outputname}-sdk.tar.gz.sha1"
+				fi
+			fi
+
+			openssl sha1 "${outputname}" | sed 's@^.*= @@' > "${outputname}.sha1"
+		fi
+
+		# Note the SHA1 has of the file
+		if [ -f "${outputname}.sha1" ]; then
+			echo "SHA1: $(cat "${outputname}.sha1")"
+		else
+			echo "SHA1: not recorded"
+		fi
+
+		if [ -f "${outputname}-sdk.tar.gz" ]; then
+			if [ -f "${outputname}-sdk.tar.gz.sha1" ]; then
+				echo "SDK SHA1: $(cat "${outputname}-sdk.tar.gz.sha1")"
+			else
+				echo "SDK SHA1: not recorded"
+			fi
+		fi
+
+		# Test zip status
+		if unzip -l "${outputname}" 2>&1 | grep 'boot\.tcl' >/dev/null; then
+			canunzip="1"
+		else
+			canunzip="0"
+		fi
+
+		if [ "${iszip}" != "${canunzip}" ]; then
+			echo "Failed to unzip zipkit or was able to unzip non-zipkit ${version}/${kit}" >&2
+
+			failed="${failed} ${version}/${kit}-zip"
+
+			continue
+		fi
+
+		# Do not continue past here for un-runnable kits
+		if [ "${runnable}" != "1" ]; then
+			continue
+		fi
+
+		# If the name of the original build matters, symlink it up
+		if [ -f "${outputname}-origname" ]; then
+			createdkit="$(cat "${outputname}-origname")"
+
+			ln -s "${outputname}" "${createdkit}"
+		fi
+
+		# Perform battery of tests
+		## Clean tests log
+		rm -f "${testresultslog}"
+		for testscp in "${TESTDIR}"/tests/*.tcl; do
+			testscp_tag="$(basename "${testscp}" .tcl)"
+			testscppre="$(dirname "${testscp}")/${testscp_tag}.sh"
+			scplogfile="${outputname}-${testscp_tag}.log"
+
+			(
+				if [ -f "${testscppre}" ]; then
+					. "${testscppre}"
+				fi
+
+				if [ "${kitdll}" = "1" ]; then
+					timeout -k 10 600 ${kitruncmd} "${outputname}-tclsh" "${testscp}" "${outputname}" "${kit}" "${version}"
+				else
+					timeout -k 10 600 ${kitruncmd} "${outputname}" "${testscp}" "${outputname}" "${kit}" "${version}"
+				fi
+			) > "${scplogfile}" 2>&1
+
+			if [ "$?" != "0" ]; then
+				echo "Script failed: ${testscp_tag} on ${version}/${kit}" >&2
+
+				failed="${failed} ${version}/${kit}-test-${testscp_tag}"
+
+				echo "${testscp_tag}: FAIL" >>  "${testresultslog}"
+
+				continue
+			fi
+
+			echo "${testscp_tag}: PASS" >>  "${testresultslog}"
+
+			rm -f "${scplogfile}"
+		done
+
+		if [ -f "${outputname}-origname" ]; then
+			rm -f "${createdkit}"
+		fi
+	done
+done
+
+if [ -n "${failed}" ]; then
+	echo "Failed: ${failed}"
+fi
+
+# Cleanup
+## Terminate Xvfb
+kill -9 "${XVFB_PID}"
+
+## Remove wine
+rm -rf "${WINEPREFIX32}" "${WINEPREFIX64}"
+
+./kitcreator clean
+rm -f tclsh

@@ -1,0 +1,13 @@
+#! /bin/sh
+
+# Build minimalistic tclkit
+if echo " ${KITCREATOR_PKGS} " | grep ' kitdll ' >/dev/null; then
+	KITCREATOR_PKGS="kitdll"
+else
+	KITCREATOR_PKGS=" "
+fi
+KITCREATOR_MINENCODINGS='true' 
+KITCREATOR_MINBUILD='true' 
+export KITCREATOR_PKGS KITCREATOR_MINENCODINGS KITCREATOR_MINBUILD
+
+./kitcreator "$@"

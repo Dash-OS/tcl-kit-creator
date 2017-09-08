@@ -1,0 +1,120 @@
+#! /usr/bin/env bash
+
+url="$1"
+file="$2"
+hash="$3"
+
+if [ "${#}" != '3' ]; then
+	echo 'Usage: download <url> <file> <hash>' >&2
+
+	exit 1
+fi
+
+for tryDownloadProgram in wget curl; do
+	tryDownloadProgramPath="$(which "${tryDownloadProgram}" 2>/dev/null)"
+
+	if [ -z "${tryDownloadProgramPath}" ]; then
+		continue
+	fi
+
+	if [ -x "${tryDownloadProgramPath}" ]; then
+		downloadProgram="${tryDownloadProgram}"
+		downloadProgramPath="${tryDownloadProgramPath}"
+
+		break
+	fi
+done
+
+case "${hash}" in
+	????????????????????????????????????????)
+		hashMethod='sha1'
+		;;
+	????????????????????????????????????????????????????????????????)
+		hashMethod='sha256'
+		;;
+	-)
+		hashMethod='null'
+		;;
+	*)
+		echo "Unknown hash method for hash ${hash}" >&2
+
+		exit 1
+		;;
+esac
+
+function downloadFile() {
+	local file urls
+	local downloadProgramArgs
+	local url
+	local authoritativeURL
+
+	file="$1"
+	shift
+
+	urls=("$@")
+
+	authoritativeURL="${urls[@]: -1}"
+
+	case "${downloadProgram}" in
+		curl)
+			downloadProgramArgs=(--header "X-Cache-URL: ${authoritativeURL}" --location --insecure --fail --output "${file}")
+			;;
+		wget)
+			downloadProgramArgs=(--header="X-Cache-URL: ${authoritativeURL}" --no-check-certificate --output-document="${file}")
+			;;
+	esac
+
+	for url in "${urls[@]}" __fail__; do
+		rm -f "${file}"
+
+		if [ "${url}" = '__fail__' ]; then
+			return 1
+		fi
+
+		"${downloadProgram}" "${downloadProgramArgs[@]}" "${url}" && break
+	done
+
+	return 0
+}
+
+function verifyHash() {
+	local file hash hashMethod
+	local checkHash
+
+	file="$1"
+	hash="$2"
+	hashMethod="$3"
+
+	if [ "${hashMethod}" = 'null' ]; then
+		return 0
+	fi
+
+	checkHash="$(openssl dgst "-${hashMethod}" "${file}" | sed 's@.*= *@@')"
+
+	if [ "${checkHash}" = "${hash}" ]; then
+		return 0
+	fi
+
+	echo "Hash (${hashMethod}) mismatch: Got: ${checkHash}; Expected: ${hash}" >&2
+
+	return 1
+}
+
+rm -f "${file}.new" || exit 1
+
+urls=("${url}")
+
+if [ "${hashMethod}" != 'null' ]; then
+	urls=(
+		"http://hashcache.rkeene.org/${hashMethod}/${hash}"
+		"${urls[@]}"
+	)
+fi
+
+downloadFile "${file}.new" "${urls[@]}" || exit 1
+
+verifyHash "${file}.new" "${hash}" "${hashMethod}" || exit 1
+
+mv "${file}.new" "${file}" || exit 1
+
+exit 0

@@ -1,0 +1,8 @@
+OBJS = kitInit.o main.o pwb.o rechan.o zlib.o winMain.o
+
+all: kit
+
+-include Makefile.common
+
+kit: $(OBJS) $(EXTRA_OBJS) $(EXTRA_KIT_DEPS) $(EXTRA_VFS_OBJS) $(ARCHS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o kit $(OBJS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS) $(ARCHS) $(LDFLAGS) $(LIBS) $(LDFLAGS_ADD)

@@ -1,0 +1,13 @@
+#! /bin/sh
+
+AR=i586-mingw32msvc-ar
+CC=i586-mingw32msvc-gcc
+CXX=i586-mingw32msvc-g++
+RANLIB=i586-mingw32msvc-ranlib
+RC=i586-mingw32msvc-windres
+STRIP="${STRIP:-i586-mingw32msvc-strip}"
+TEA_PLATFORM='windows'
+KC_TLS_LINKADD='-lws2_32 -lgdi32'
+export AR CC CXX RANLIB RC STRIP TEA_PLATFORM KC_TLS_LINKADD
+
+./kitcreator "$@" --host=i586-mingw32msvc

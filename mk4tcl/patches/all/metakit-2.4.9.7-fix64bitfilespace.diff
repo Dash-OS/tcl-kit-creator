@@ -1,0 +1,15 @@
+diff -uNr metakit-2.4.9.7.orig/tcl/mk4tcl.cpp metakit-2.4.9.71fix64bitfilespace/tcl/mk4tcl.cpp
+--- metakit-2.4.9.7.orig/tcl/mk4tcl.cpp	2007-06-18 16:05:24.000000000 -0500
++++ metakit-2.4.9.7-fix64bitfilespace/tcl/mk4tcl.cpp	2013-09-30 01:02:52.745003499 -0500
+@@ -1911,7 +1911,11 @@
+         // now return the values as a list
+         Tcl_Obj *r = tcl_GetObjResult();
+         for (int i = 1; i < a->GetSize() - 1 && !_error; ++i)
++#ifdef TCL_WIDE_INT_TYPE
++          tcl_ListObjAppendElement(r, Tcl_NewWideIntObj((Tcl_WideInt)a->GetAt(i)));
++#else
+           tcl_ListObjAppendElement(r, Tcl_NewLongObj((long)a->GetAt(i)));
++#endif  
+         return _error;
+       }
+   }

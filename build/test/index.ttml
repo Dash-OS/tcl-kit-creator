@@ -1,0 +1,35 @@
+<html>
+  <head>
+    <title>KitCreator Build and Test Status</title>
+  </head>
+  <body>
+    <h1><a href="http://kitcreator.rkeene.org/">KitCreator</a> Build and Test Status</h1>
+    <p>The follow versions of KitCreator have test suite results:</p>
+    <ul>
+<?
+	set haveTests 0
+	foreach subdir [lsort -dictionary [glob -type d *]] {
+		file lstat $subdir subdirinfo
+		if {$subdirinfo(type) == "link"} {
+			continue
+		}
+
+		if {$subdir == "tests"} {
+			set haveTests 1
+
+			continue
+		}
+
+		puts "      <li><a href=\"${subdir}/\">$subdir</a></li>"
+	}
+?>
+    </ul>
+<?
+	if {$haveTests} {
+?>
+    <p>The actual tests can be found in <a href="http://kitcreator.rkeene.org/fossil/dir?name=build/test/tests&ci=trunk">the "tests" directory</a></p>
+<?
+	}
+?>
+  </body>
+</html>

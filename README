@@ -1,0 +1,329 @@
+This will build a Tclkit named "tclkit-<version>" or a KitDLL named
+"libtclkit<version>.so".
+
+---------------
+Using This Tool
+---------------
+Usage:
+	kitcreator [{build | retry | clean | distclean}]
+	           [{<version> | cvs_<tag> | fossil_<tag>}]
+	           [<configure_option> ...]
+
+	Where:
+		version            is a Tcl version number (e.g., 8.6.1)
+		tag                is a CVS or fossil release tag (e.g., HEAD)
+		configure_option   option to pass to subordinate configure
+		                   scripts (e.g., --enable-64bit)
+
+	Default is to create a Tclkit from Tcl version 8.6.1
+
+Examples:
+	1. Create a Tclkit:
+		a. $ ./kitcreator
+
+	2. Create a Tclkit for Tcl 8.5.15:
+		a. $ ./kitcreator 8.5.15
+
+	3. Create a Tclkit for Tcl from CVS HEAD:
+		a. $ ./kitcreator cvs_HEAD
+
+	4. Compile a 64-bit Tclkit:
+		a. $ ./kitcreator --enable-64bit
+
+	5. Cross-compile a Tclkit:
+		a. Bootstrap (optional, you can use an existing Tclkit):
+			i.   $ ./kitcreator
+			ii.  $ mv tclkit-8.4.19 tclkit-local
+			iii. $ TCLKIT="`pwd`/tclkit-local"
+			iv.  $ export TCLKIT
+		b. Cross-compile:
+			i.   $ CC=mipsel-linux-uclibc-gcc
+			ii.  $ CXX=false
+			iii. $ AR=mipsel-linux-uclibc-ar
+			iv.  $ RANLIB=mipsel-linux-uclibc-ranlib
+			v.   $ export CC CXX AR RANLIB
+			vi.  $ ./kitcreator --host=mipsel-linux-uclibc
+	   Note: When cross-compiling, the Tcl configure script may be unable
+	   to determine which serial support method to use. If you want serial
+	   support in a cross-compiled tclkit, specify it manually, e.g.:
+		$ ./kitcreator CFLAGS=-DUSE_TERMIOS=1 -host=mipsel-linux-uclibc
+
+	6. Compile a 64-bit Tclkit 8.5.15 using SunStudio 12.1 on Solaris/x86:
+		a. $ CC='/opt/sunstudio12.1/bin/cc -m64'
+		b. $ CXX='/opt/sunstudio12.1/bin/CC -m64'
+		c. $ PATCH='gpatch'
+		c. $ export CC CXX PATCH
+		d. $ ./kitcreator 8.5.15 --enable-64bit
+
+	7. To clean up post-build:
+		a. $ ./kitcreator clean
+
+	8. Create a Tclkit without Metakit4 support (falls back to Zip for storage):
+		a. KITCREATOR_PKGS='tk itcl'
+		b. export KITCREATOR_PKGS
+		c. ./kitcreator
+
+	9. Create a Tclkit with Metakit4 support, but using Zip for storage:
+		a. $ ./kitcreator --enable-kit-storage=zip
+
+	10. Create a Tclkit with Metakit4 support, but using C-VFS for storage
+		a. $ ./kitcreator --enable-kit-storage=cvfs
+
+	11. Create a KitDLL without Metakit support (will not create a Tclkit
+	    binary, just the library):
+		a. $ KITCREATOR_PKGS='tk itcl kitdll'
+		b. $ export KITCREATOR_PKGS
+		c. $ ./kitcreator
+
+Environment variables:
+	1. MAKE
+		Specifies the tool you wish to be called to build targets
+		from a Makefile.  This script is generally more well tested
+		with GNU Make.
+
+	2. PATCH
+		Specifies the tool you wish to be called to apply unified
+		diff patches.  This script is generally more well tested with
+		GNU Patch. 
+
+	3. TCLKIT
+		Specify the path to a Tclkit that is runnable on the current
+		system.  The default is "tclkit".  A working tclkit is required
+		for cross-compiling Tclkits.
+
+	4. STATICTK
+		Specify this as "1" to statically link to Tk.  The default
+		action on most platforms is to dynamically link to Tk.  When
+		building KitDLL, STATICTK is "1" by default.  If you want to
+		enable dynamic linking of Tk with KitDLL you will have to
+		specify this as "-1".
+
+	5. STATICMK4
+		Specify this as "0" to attempt to create create the "mk4tcl"
+		project as a shared object.  If this fails, it will fall back
+		to building statically.  Specify it as "-1" to force building
+		it as a shared object.  Any other value, including being unset
+		results in "mk4tcl" being built and linked statically.  KitDILL
+		sets this to variable to "0".  If Metakit4 is built shared, it
+		cannot be used for the kit storage for Tclkit.
+
+	6. STRIP
+		Specifies the tool you wish to be called to strip object files,
+		archives, and shared objects.  The default is "strip".  You
+		should probably set this if you are cross-compiling.
+
+	7. KITCREATOR_PKGS
+		Specify which non-required packages to build.  The default list
+		is:
+			tk itcl mk4tcl
+
+		If mk4tcl is not present a Zip-based storage mechanism will be
+		used instead.  To specify that the default be used, do not set
+		this or set it to the empty string.  To specify that no
+		non-required packages be built, set it to a string that
+		contains only white space.
+
+		If "kitdll" is specified in the list the target becomes KitDLL
+		and no Tclkit will built, but instead libtclkit.
+
+	8. KITCREATOR_MINENCODINGS
+		Set this variable to a non-empty string to generate a Tclkit
+		without all encodings, only including the following:
+			ascii.enc cp1252.enc iso8859-1.enc iso8859-15.enc
+			iso8859-2.enc koi8-r.enc macRoman.enc
+
+	9. KITCREATOR_MINBUILD
+		Set this variable to a non-empty string to exclude unnecessary
+		packages from Tcl build.  This excludes the following packages:
+			tcltest
+
+		Additionally, any bundled packages (in the "pkgs" directory)
+		are excluded.  This typically includes (as of Tcl 8.6):
+			itcl thread
+
+	10. KC_TCL_STATICPKGS
+		Set this variable to the value "1" to attempt to force the
+		packages included in the "pkgs" directory of Tcl 8.6+
+		to be compiled statically
+
+	11. KITCREATOR_STATIC_KITDLL
+		Set this variable to the value "1" to build a static KitDLL.
+		This only has an affect when KITCREATOR_PKGS specifies that
+		"kitdll" is to be built (e.g., KITCREATOR_PKGS='kitdll')
+
+	12. KITCREATOR_ITCL3_FORCE
+		Set this variable to the value "1" to build [incr Tcl] version
+		3.x even with Tcl 8.6+.  Note that [incr Tcl] 4.x will still
+		be built as part of Tcl 8.6+ (unless excluded using
+		KITCREATOR_MINBUILD).
+
+
+Cross compiling Environment Variables:
+
+	1. CC  
+		C compiler   e.g. i686-pc-mingw32-gcc
+
+	2. CXX
+		C++ compiler.  Required if you want to use mk4tcl. e.g. i686-pc-mingw32-g++
+		If not required, you can set it to the string "false"
+
+	3. AR
+		Library creator e.g. i686-pc-mingw32-ar
+
+	4. RANLIB
+		Library post processing executable e.g. i686-pc-mingw32-ranlib
+
+	5. STRIP
+		Executable name to strip binaries e.g. i686-pc-mingw32-strip
+
+	6. NM
+		Executable used to dump names from the objects  e.g. i686-pc-mingw32-nm
+
+	7. CC_FOR_BUILD, HOST_CC 
+		Set this to the name of compiler on the host on which
+		the cross compilation is being run.
+
+On Windows we also need this:
+
+	1. RC
+		Resource compiler : e.g. i686-pc-mingw32-windres
+
+
+Kitsh Configure Options:
+	1. --enable-kit-storage={zip|mk4|cvfs|auto}
+		Specify which type of storage to use with the Tclkit.  The
+		default is to auto-detect.  Auto-detection uses Mk4 if
+		available and built statically, otherwise it falls back to Zip.
+	2. --with-obsfucated-cvfs
+		Specify that CVFS should be obsfucated.  The contents of the
+		CVFS are encrypted on disk and the encryption key is included
+		in the executable.  Files are then transparently decrypted on
+		access.
+
+--------------------
+Using the KitDLL SDK
+--------------------
+When you build a KitDLL, a "libtclkit-sdk-<tclvers>.tar.gz" tarball is also
+produced.  This tarball contains the Tcl (and Tk, if compiled) stubs libraries,
+and Tcl (and Tk, if compiled) header files needed to compile and link things
+against Tcl (and Tk).  It also includes "tclConfig.sh" (and "tkConfig.sh", if
+Tk was compiled).
+
+The purpose for this tarball is to be used to build Tcl extensions or
+applications that rely on Tcl/Tk using the KitDLL.
+
+To use it, one first must extract the tarball.  After that the environment
+variable "TCLKIT_SDK_DIR" must be set to the directory that was created in
+order to make most of the variables contain useful values.
+
+For example, to build an extension using the KitDLL SDK one would typically do
+something like:
+	1. Compile KitDLL (may be omitted if the KitDLL SDK is already
+	   available)
+		a. $ KITCREATOR_PKGS='tk itcl kitdll'
+		b. $ export KITCREATOR_PKGS
+		c. $ ./kitcreator
+	2. Compile the Extension
+		a. $ tar -xf /path/to/libtclkit-sdk-8.4.19.tar.gz
+		b. $ TCLKIT_SDK_DIR="$(pwd)/libtclkit-sdk-8.4.19"
+		c. $ export TCLKIT_SDK_DIR
+		d. $ ./configure --with-tcl="${TCLKIT_SDK_DIR}/lib"
+		e. $ make
+
+-------------------
+Method of Operation
+-------------------
+Summary:
+	1. "kitcreator" calls */build.sh
+	2. */build.sh downloads and compiles appropriate software
+	3. */build.sh installs software into "inst" (run-time + compile-time)
+	4. */build.sh installs run-time software into "out", this will be
+	   included in the Tclkit as if it were the root directory of the
+	   Tclkit (combined with other "out" directories)
+	5. kitsh/build.sh compiles a "main" function and links all the built
+	   libraries together into an executable
+	6. kitsh/build.sh combines all the "out" directories into one
+	7. kitsh/build.sh creates a Metakit or Zip database from the combined
+	   directories and appends that to the compiled executable using:
+		a. A Tclkit found in the environment variable "TCLKIT" (tclkit
+		   if unset) if it is functional; or
+		b. The built kit itself (does not work for cross-compiling)
+
+Details:
+	The general mechanism that enables a Tclkit to operate is a small Tcl
+initialization routine linked statically to the core libraries needed to
+operate a Tcl interpreter, the Tcl VFS Layer, and a database-backed (Metakit)
+Virtual File System that is appended to the end of the executable.
+
+This project brings together all of the required pieces, plus some additional
+pieces that were found in the original Tclkit:
+	1. Tk (dynamically linked)
+	2. Itcl (dynamically linked)
+
+The source code for these pieces are downloaded, compiled, and linked, and the
+database containing the appropriate filesystem data is created.  What sets
+this project apart from other similar projects is that:
+	1. It attempts to be modular;
+	2. It supports cross-compiling;
+	3. It downloads the source from their original repositories;
+	4. It allows you to specify an arbitrary version of Tcl (including
+	   CVS); and
+	5. It uses GNU Autoconf scripts for compiling the part of the Tclkit
+	   that brings the whole thing together (the Kitsh)
+
+To accomplish these goals the following mechanisms are in place:
+	1. The top-level "kitcreator" script; and
+	2. Per-project subdirectories, each containing a "build.sh" script
+
+The top-level "kitcreator" script is very simple.  Its only job is to
+interpret command line arguments, and call the per-project "build.sh" scripts.
+For the "tcl" project it also finds the appropriate "tclConfig.sh" (and stores
+this path in TCLCONFIGDIR) to enable subsequent build scripts to find the
+appropriate Tcl to link against.
+
+The per-project "build.sh" scripts are entirely autonomous.  They are
+responsible for downloading the source code for the appropriate version that
+will compile and link against the current version of Tcl (user requested
+version can be found in "TCLVERS", while the actual version must be requested
+from the "tclConfig.sh" script), compiling it, installing a functional copy
+into the per-project "inst" directory, and installing anything that needs to
+be in the Tclkit's VFS root into the per-project "out" directory.
+
+Any additional projects can be included simply by creating the appropriate
+directory in the same directory as the "kitcreator" script, creating a
+"build.sh" script in that directory that follows the above procedure, and then
+referencing that directory in "KITCREATOR_PKGS" for the "kitcreator" invocation.
+In this way KitCreator is "pluggable".  Included packages may be either
+statically or dynamically linked.  If it is statically linked then the module
+name must be the name of the directory -- that is, if the directory were "foo",
+KitCreator will expect to initialize the module statically using Foo_Init().
+
+The exception to this is the "kitsh" project.  It is the glue that binds all
+the individual projects together into a single executable.  Its build script
+does not create an "inst" or an "out" directory because it is not a library.
+Instead, it collects all the other project's "out" directories into a single
+directory (starpack.vfs), as well a static file (boot.tcl). It then compiles
+the source code, and then installs the VFS onto the resulting executable.
+The VFS is created by the "installvfs.tcl" script for Kitsh.  For KitDLL the
+VFS is created by "dir2c.tcl".
+
+If the "mk4tcl" project fails to build (or is not requested to be built),
+the rest of the project will be built using zip files instead of Metakit
+databases.
+
+To create the storage database, one of two Tclkits is used (tried in this
+order):
+	1. The Tclkit specified by the TCLKIT environment variable (or
+	   "tclkit" if that variable is not set) if it is functional; or
+	2. The built Tclkit itself
+
+The second method will not work if the built Tclkit is not executable on the
+current platform (i.e., in the case of cross-compilation) and so it may be
+necessary to bootstrap a runnable Tclkit first.
+
+KitDLL mounts the VFS for every interpreter that calls Tcl_Init().  The system
+VFS that is created at build time is mounted at /.KITDLL_TCL.  Additionally,
+if there is a ZIP file appended to the DLL it will be mounted at /.KITDLL_USER
+and if there is a ZIP file appended to the executable it will be mounted at
+/.KITDLL_APP.  All VFSes that are mounted have the "lib" sub-directory appended
+to the interpreters "auto_path" variable.

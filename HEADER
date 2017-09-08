@@ -1,0 +1,9 @@
+                                @@UTIL@@ @@VERS@@
+
+Release information:
+  home: http://kitcreator.rkeene.org/
+  pkg:  @@UTIL@@ version @@VERS@@
+  url:  http://www.rkeene.org/devel/@@UTIL@@-@@VERS@@.tar.gz
+  date: @@DATE@@
+--------------------------------------------------------------------------
+

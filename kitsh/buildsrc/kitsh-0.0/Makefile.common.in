@@ -1,0 +1,67 @@
+CC = @CC@
+RC = @RC@
+OBJCOPY = @OBJCOPY@
+CFLAGS = @CFLAGS@ @SHOBJFLAGS@
+CPPFLAGS = @CPPFLAGS@ @DEFS@
+WISH_CFLAGS = @WISH_CFLAGS@
+LDFLAGS = @LDFLAGS@
+SHOBJLDFLAGS = @SHOBJLDFLAGS@
+LIBS = @LIBS@
+ARCHS = @ARCHS@
+STRIPLIBS = @STRIPLIBS@ @EXTRA_OBJS@
+EXTRA_OBJS = @EXTRA_OBJS@
+LDRUNPATH = @LDRUNPATH@
+EXTRA_KIT_DEPS = @EXTRA_KIT_DEPS@
+EXTRA_VFS_OBJS = @EXTRA_VFS_OBJS@
+TCLSH_NATIVE = tclsh
+LDFLAGS_ADD = @LDFLAGS_ADD@
+DIR2C_FLAGS = @DIR2C_FLAGS@
+AR = @AR@
+RANLIB = @RANLIB@
+
+# Build targets
+## VFS Build
+cvfs_data_tcl.o: cvfs_data_tcl.c
+cvfs_data_tcl.c: dir2c.tcl starpack.vfs cvfs_data.c
+	"$(TCLSH_NATIVE)" dir2c.tcl tcl starpack.vfs $(DIR2C_FLAGS) > cvfs_data_tcl.c
+
+## Tcl scripts that need to be converted to C headers
+cvfs.tcl.h: cvfs.tcl
+	"$(TCLSH_NATIVE)" ./stringify.tcl cvfs.tcl > cvfs.tcl.h
+
+zipvfs.tcl.h: zipvfs.tcl
+	"$(TCLSH_NATIVE)" ./stringify.tcl zipvfs.tcl > zipvfs.tcl.h
+
+## Objects
+kitInit.o: kitInit.c $(EXTRA_KIT_DEPS)
+rechan.o: rechan.c
+pwb.o: pwb.c
+zlib.o: zlib.c
+
+### Windows resources
+kit.res.o: kit.rc tclkit.ico
+	$(RC) -o kit.res.o $(CPPFLAGS) kit.rc
+
+# Cleanup routines
+clean:
+	rm -rf __TMP__
+	rm -f kit kit.res.o
+	rm -f libtclkit@KITDLL_LIB_VERSION@.@SHOBJEXT@
+	rm -f $(OBJS) $(EXTRA_OBJS) $(EXTRA_VFS_OBJS)
+	rm -f cvfs_data_tcl.c cvfs_data_tcl.o
+	rm -f cvfs.tcl.h
+	rm -f tclsh.o tclsh tclsh.exe
+	rm -f wish.o wish wish.exe
+
+distclean: clean
+	rm -f kitInit-libs.h
+	rm -f Makefile Makefile.in Makefile.common
+	rm -f config.status config.log
+	rm -f *~
+	rm -rf starpack.vfs
+	rm -rf autom4te.cache
+
+mrproper: distclean
+	rm -f configure config.h zipvfs.tcl.h
+
+.PHONY: all clean distclean mrproper
