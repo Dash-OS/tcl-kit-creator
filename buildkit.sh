@@ -68,10 +68,10 @@ export KITCREATOR_BOOT="${KC_PATH}/resources/boot.tcl"
 ### scripts if needed
 # CONFIGUREXTRA=''
 
-# ./kitcreator $TCLVERS \
-#   --enable-kit-storage="${KITCREATOR_STORAGE}" \
-#   $KC_EXTRA_ARGS
-
-./kitcreator retry \
+./kitcreator $TCLVERS \
   --enable-kit-storage="${KITCREATOR_STORAGE}" \
   $KC_EXTRA_ARGS
+
+# ./kitcreator retry \
+#   --enable-kit-storage="${KITCREATOR_STORAGE}" \
+#   $KC_EXTRA_ARGS
