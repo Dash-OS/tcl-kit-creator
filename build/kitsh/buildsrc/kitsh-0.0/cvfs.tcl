@@ -19,6 +19,7 @@ proc ::vfs::cvfs::Unmount {local} {
 # Implementation
 ## I/O Handlers (pass to appropriate hashkey)
 namespace eval ::vfs::cvfs::data {}
+
 proc ::vfs::cvfs::data::getChildren args {
 	set hashkey [lindex $args 0]
 
@@ -277,7 +278,7 @@ proc ::vfs::cvfs::vfsop_fileattributes {hashkey root relative actualpath {index 
 }
 
 proc ::vfs::cvfs::vfsop_open {hashkey root relative actualpath mode permissions} {
-	if {$mode != "" && $mode != "r"} {
+  if {$mode != "" && $mode != "r"} {
 		vfs::filesystem posixerror $::vfs::posix(EROFS)
 	}
 

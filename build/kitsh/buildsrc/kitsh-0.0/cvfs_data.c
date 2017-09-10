@@ -6,7 +6,7 @@
 
 typedef struct cvfs_data *(cmd_getData_t)(const char *, unsigned long);
 typedef unsigned long (cmd_getChildren_t)(const char *, unsigned long *, unsigned long);
-typedef void (cmd_decryptFile_t)(const char *, struct cvfs_data *); 
+typedef void (cmd_decryptFile_t)(const char *, struct cvfs_data *);
 
 /* Your implementation must provide these */
 static cmd_getData_t *getCmdData(const char *hashkey);
@@ -202,7 +202,12 @@ static int getData(ClientData cd, Tcl_Interp *interp, int objc, Tcl_Obj *CONST o
 		return(TCL_ERROR);
 	}
 
-	ret_str = Tcl_NewByteArrayObj(finfo->data + start, (end - start));
+  ret_str = Tcl_NewByteArrayObj(finfo->data + start, (end - start));
+  // Tcl_ZlibInflate(interp, TCL_ZLIB_FORMAT_RAW, Tcl_NewByteArrayObj(finfo->data + start, end), TCL_ZLIB_COMPRESS_DEFAULT, NULL);
+  // if (finfo->type == CVFS_FILETYPE_FILE || finfo->type == CVFS_FILETYPE_ENCRYPTED_FILE) {
+  //   Tcl_ZlibInflate(interp, TCL_ZLIB_FORMAT_RAW, ret_str, TCL_ZLIB_COMPRESS_DEFAULT, NULL);
+  //   ret_str = Tcl_NewByteArrayObj(Tcl_GetObjResult(interp) + start, (end - start));
+  // }
 
 	Tcl_IncrRefCount(ret_str);
 

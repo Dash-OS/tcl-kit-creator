@@ -336,10 +336,10 @@ AC_DEFUN(DC_FIND_TCLKIT_LIBS, [
 AC_DEFUN(DC_SETUP_TCL_PLAT_DEFS, [
 	AC_CANONICAL_BUILD
 	AC_CANONICAL_HOST
-  
+
 	AC_MSG_CHECKING(host operating system)
 	AC_MSG_RESULT($host_os)
-  
+
 	case $host_os in
 		mingw32*)
 			CFLAGS="${CFLAGS} -mms-bitfields"
@@ -581,10 +581,24 @@ AC_DEFUN(DC_SET_DIR2C_FLAGS, [
 		obsfucate_cvfs='no'
 	])
 
+  AC_ARG_WITH(obsfucated-include, AC_HELP_STRING([--with-obsfucated-include], [A file path or comma-separated list of string match values to check if a file should be obsfucated]), [
+		obsfucate_include=$withval
+	], [
+		obsfucate_include='no'
+	])
+
 	case "$obsfucate_cvfs" in
 		yes)
-			AC_MSG_RESULT([yes])
-			DIR2C_FLAGS='--obsfucate'
+      case "$obsfucate_include" in
+        no)
+          AC_MSG_RESULT([yes, include all])
+          DIR2C_FLAGS='--obsfucate'
+        ;;
+        *)
+          AC_MSG_RESULT([yes, include matches])
+          DIR2C_FLAGS="--obsfucate --include \"${obsfucate_include}\""
+        ;;
+      esac
 			;;
 		*)
 			AC_MSG_RESULT([no])

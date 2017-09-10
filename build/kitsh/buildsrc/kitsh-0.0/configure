@@ -710,6 +710,7 @@ with_tk
 with_zlib
 enable_kit_storage
 with_obsfucated_cvfs
+with_obsfucated_include
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1348,6 +1349,9 @@ Optional Packages:
   --with-zlib             directory containing zlib
   --with-obsfucated-cvfs  Obsfucate CVFS filesystem (requires
                           --enable-kit-storage=cvfs)
+  --with-obsfucated-include
+                          A file path or comma-separated list of string match
+                          values to check if a file should be obsfucated
 
 Some influential environment variables:
   CC          C compiler command
@@ -5941,11 +5945,33 @@ else
 fi
 
 
+
+# Check whether --with-obsfucated-include was given.
+if test "${with_obsfucated_include+set}" = set; then :
+  withval=$with_obsfucated_include;
+		obsfucate_include=$withval
+
+else
+
+		obsfucate_include='no'
+
+fi
+
+
 	case "$obsfucate_cvfs" in
 		yes)
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-			DIR2C_FLAGS='--obsfucate'
+      case "$obsfucate_include" in
+        no)
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, include all" >&5
+$as_echo "yes, include all" >&6; }
+          DIR2C_FLAGS='--obsfucate'
+        ;;
+        *)
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes, include matches" >&5
+$as_echo "yes, include matches" >&6; }
+          DIR2C_FLAGS="--obsfucate --include \"${obsfucate_include}\""
+        ;;
+      esac
 			;;
 		*)
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5

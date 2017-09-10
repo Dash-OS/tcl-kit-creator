@@ -203,10 +203,25 @@ proc tclInit {} {
     set bootfiles [glob \
       -nocomplain \
       -directory [file join $mountpoint boot] \
-      *.tcl
+      *
     ]
     foreach bootfile $bootfiles {
-      uplevel #0 [list source $bootfile]
+      if {[file type $bootfile] == "directory"} {
+        # We source up to one directory deep to allow for
+        # the "private" directory within boot being obsfucated
+        set dirfiles [glob \
+          -nocomplain \
+          -directory $bootfile \
+          *.tcl
+        ]
+        foreach dirfile $dirfiles {
+          catch { uplevel #0 [list source $dirfile] }
+        }
+      } else {
+        if {[string match "*.tcl" $bootfile]} {
+          catch { uplevel #0 [list source $bootfile] }
+        }
+      }
     }
   }
 }

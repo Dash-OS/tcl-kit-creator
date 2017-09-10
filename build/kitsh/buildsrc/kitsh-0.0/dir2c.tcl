@@ -1,20 +1,107 @@
 #! /usr/bin/env tclsh
 
-set obsfucate 0
-if {[lindex $argv end] == "--obsfucate"} {
-	set obsfucate 1
+# Modification for selective obsfucation
+# package require zlib
 
-	set argv [lrange $argv 0 end-1]
+set obsfucate 0
+set verbose 0
+set compress_files 1
+
+foreach idx $argv {
+  set remove_idx 0
+  if {$idx eq "--verbose"} {
+    set verbose 1
+    set remove_idx 1
+  } elseif {$idx eq "--obsfucate"} {
+    set obsfucate  1
+    set remove_idx 1
+  } elseif {$idx eq "--include"} {
+    set obsfucate_include 1
+    set remove_idx 1
+  } elseif {[info exists obsfucate_include] && [string is true -strict $obsfucate_include]} {
+    set obsfucate_include [string trim [string trim $idx \"]]
+    set remove_idx 1
+  }
+  if {$remove_idx} {
+    set argv [lsearch -all -inline -not -exact $argv $idx]
+  }
 }
 
-if {[llength $argv] != 2} {
-	puts stderr "Usage: dir2c.tcl <hashkey> <startdir> \[--obsfucate\]"
+unset idx
+unset remove_idx
 
+if {[llength $argv] != 2} {
+	puts stderr "Usage: dir2c.tcl <hashkey> <startdir> \[--obsfucate\] ?\[--include\] pattern?"
+  puts stderr "Received: [llength $argv] | $argv"
 	exit 1
+}
+
+if {[info exists obsfucate_include]} {
+  if {[file isfile $obsfucate_include]} {
+    # allow providing a file
+    set fd [open $obsfucate_include r]
+    set data [string trim [read $fd]]
+    close $fd
+    set obsfucate_include [split $data "\n"]
+    unset data
+    unset fd
+  } else {
+    set obsfucate_include [split $obsfucate_include ,]
+  }
+}
+
+if 0 {
+  @ log
+    | log if verbose is set
+  @arg message {any}
+    value to log
+}
+if {$verbose} {
+  proc log message {
+    puts stderr $message
+  }
+} else {
+  proc log message {}
+}
+
+if {$obsfucate} {
+  log "obsfucating contents"
+  if {[info exists obsfucate_include]} {
+    log "obsfucate include patterns: $obsfucate_include"
+  } else {
+    log "obsfucate all files (--include not found)"
+  }
+}
+
+if 0 {
+  @ should_obsfucate
+    | Checks to see if a file matches the provided
+    | --include value.  Returns true/false if it
+    | matches or not to indicate whether a given
+    | value should be obsfucated
+  @arg file
+    A file path that should be checked
+  @returns {boolean}
+    Whether or not any includes match
+}
+proc should_obsfucate file {
+  if {![info exists ::obsfucate_include]} {
+    # if a --include parameter was not given,
+    # obsfucate everything that is requested
+    return true
+  }
+  foreach include $::obsfucate_include {
+    if {[string match $include $file]} {
+      log "Obsfucating File: $file"
+      return true
+    }
+  }
+  return false
 }
 
 set hashkey [lindex $argv 0]
 set startdir [lindex $argv 1]
+
 
 proc shorten_file {dir file} {
 	set dirNameLen [string length $dir]
@@ -85,7 +172,6 @@ proc stringify {data} {
 # Encrypt the data
 proc random_byte {} {
 	set value [expr {int(256 * rand())}]
-
 	return $value
 }
 
@@ -175,6 +261,26 @@ proc encrypt {data key_dict {decrypt 0}} {
 
 proc decrypt {data key_dict} {
 	return [encrypt $data $key_dict 1]
+}
+
+proc compress data {
+  return [zlib deflate $data]
+}
+
+proc decompress data {
+  return [zlib inflate $data]
+}
+
+if 0 {
+  @ maybe_compress
+    | Check if
+}
+proc maybe_compress {file data} {
+  if {[::info exists ::compress_files]} {
+    return [compress $data]
+  } else {
+    return $data
+  }
 }
 
 # This function must be kept in-sync with the generated C function below
@@ -283,7 +389,7 @@ static unsigned long cvfs_hash(const unsigned char *path) {
 		}
 		h &= ((~g) & 0xffffffffLU);
 	}
-        
+
         return(h);
 }
 
@@ -333,7 +439,7 @@ for {set idx 1} {$idx < [llength $files]} {incr idx} {
 			set data [read $fd]
 			close $fd
 
-			if {$obsfucate} {
+			if {$obsfucate && [should_obsfucate $file]} {
 				set type "CVFS_FILETYPE_ENCRYPTED_FILE"
 				set data "(unsigned char *) [stringify [encrypt $data $obsfucation_key]]"
 			} else {
@@ -458,7 +564,7 @@ for {set idx 1} {$idx < [llength $files]} {incr idx} {
 	puts "\t\tcase $idx:"
 	puts "\t\t\tnum_children = [llength $child_idx_list];"
 	puts "\t\t\tbreak;"
-	
+
 }
 
 puts "\t}"

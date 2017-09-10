@@ -1,10 +1,9 @@
 # BuildCompatible: KitCreator
 
 # adds tcl-modules
-# [package require tcl-modules]
-#   - once this is done then you can require
-#     any of the tcl modules that are included
-
+#   - it's tm path is added on boot, but no
+#     packages are required.
+#
 url_prefix="https://github.com/Dash-OS/tcl-modules"
 
 pkg_name="tcl-modules"
@@ -14,7 +13,7 @@ pkg_name="tcl-modules"
 ### ${url_prefix}/releases
 ### -- This package changes constantly, checking releases
 ###    on every build is adviseable.
-version='2.090717.76';
+version='2.090717.77';
 
 ### Install the release specified above and
 ### verify the sha256 signature.

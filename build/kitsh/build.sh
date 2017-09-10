@@ -75,7 +75,7 @@ mkdir 'out' 'inst' || exit 1
     if [ -d "${KC_DIRECTORY}/assets/boot" ]; then
       mkdir "starpack.vfs/boot"
       cp -rf \
-        "${KC_DIRECTORY}"/assets/boot/*.tcl \
+        "${KC_DIRECTORY}"/assets/boot/* \
         "starpack.vfs/boot/"
     fi
 
@@ -84,6 +84,35 @@ mkdir 'out' 'inst' || exit 1
 
     ## Copy in all built directories
     cp -r "${OTHERPKGSDIR}"/*/out/* 'starpack.vfs/'
+
+    if [ -d "starpack.vfs/private" -o -d "starpack.vfs/boot/private" ]; then
+      # private directory is obsfucated if included
+      kit_storage="$(echo " ${CONFIGUREEXTRA} " | sed 's@^.* --enable-kit-storage=\([^ ]*\) .*$@\1@
+      t x
+      d
+      :x')"
+      OBSFUCATE_INCLUDE="$(echo " ${CONFIGUREEXTRA} " | sed 's@^.* --with-obsfucated-include=\([^ ]*\) .*$@\1@
+      t x
+      d
+      :x')"
+      if [ "${kit_storage}" = "cvfs" ]; then
+        if [ -n "${OBSFUCATE_INCLUDE}" ]; then
+          OBSFUCATE_INCLUDE="${OBSFUCATE_INCLUDE},*/private/*"
+        else
+          OBSFUCATE_INCLUDE="*/private/*"
+        fi
+        CONFIGUREEXTRA="${CONFIGUREEXTRA} --with-obsfucated-cvfs --with-obsfucated-include=$OBSFUCATE_INCLUDE"
+      elif [ -d "starpack.vfs/private" ]; then
+        # we provide an error if the private folder is provided and cvfs is not the
+        # chosen storage type since they can not be obsfucated otherwise.
+        echo "private directory defined but cvfs is not the chosen storage type"
+        exit 1
+      else
+        # we remove the boot/private directory if we can not obsfucate it
+        echo "\"WARN\" | cvfs is the only storage type that can be obsfucated and boot/private is present.  removing private boot directory"
+        rm -rf "starpack.vfs/boot/private"
+      fi
+    fi
 
     ## Rename the "vfs" package directory to what "boot.tcl" expects
     mv 'starpack.vfs/lib'/vfs* 'starpack.vfs/lib/vfs'
@@ -226,31 +255,32 @@ mkdir 'out' 'inst' || exit 1
       "${TCLKIT}" installvfs.tcl "${KITTARGET_NAME}" starpack.vfs "${ENABLECOMPRESSION}" "${KITTARGET_NAME}.new" || exit 1
     else
       if echo 'exit 0' | "${KITTARGET_NAME}" >/dev/null 2>/dev/null; then
-      ## Bootstrap (cannot cross-compile)
-      ### Call installer
-      echo "set argv [list {${KITTARGET_NAME}} starpack.vfs {${ENABLECOMPRESSION}} {${KITTARGET_NAME}.new}]" > setup.tcl
-      echo 'if {[catch { clock seconds }]} { proc clock args { return 0 } }' >> setup.tcl
-      echo 'source installvfs.tcl' >> setup.tcl
+        ## Bootstrap (cannot cross-compile)
+        ### Call installer
+        echo "set argv [list {${KITTARGET_NAME}} starpack.vfs {${ENABLECOMPRESSION}} {${KITTARGET_NAME}.new}]" > setup.tcl
+        echo 'if {[catch { clock seconds }]} { proc clock args { return 0 } }' >> setup.tcl
+        echo 'source installvfs.tcl' >> setup.tcl
 
-      echo 'Running: echo | \"${KITTARGET_NAME}\" setup.tcl'
-      echo | "${KITTARGET_NAME}" setup.tcl || exit 1
-    else
-      ## Install using Tclsh, which may work if we're not using Metakit
-      ### Call installer
-      echo "Running: \"${TCLSH_NATIVE}\" installvfs.tcl \"${KITTARGET_NAME}\" starpack.vfs \"${ENABLECOMPRESSION}\" \"${KITTARGET_NAME}.new\""
-      "${TCLSH_NATIVE}" installvfs.tcl "${KITTARGET_NAME}" starpack.vfs "${ENABLECOMPRESSION}" "${KITTARGET_NAME}.new" || exit 1
+        echo 'Running: echo | \"${KITTARGET_NAME}\" setup.tcl'
+        echo | "${KITTARGET_NAME}" setup.tcl || exit 1
+      else
+        ## Install using Tclsh, which may work if we're not using Metakit
+        ### Call installer
+        echo "Running: \"${TCLSH_NATIVE}\" installvfs.tcl \"${KITTARGET_NAME}\" starpack.vfs \"${ENABLECOMPRESSION}\" \"${KITTARGET_NAME}.new\""
+        "${TCLSH_NATIVE}" installvfs.tcl "${KITTARGET_NAME}" starpack.vfs "${ENABLECOMPRESSION}" "${KITTARGET_NAME}.new" || exit 1
+      fi
     fi
-  fi
 
-  cp "${KITTARGET_NAME}.new" "${KITTARGET_NAME}"
-  rm -f "${KITTARGET_NAME}.new"
 
-  # Cleanup
-  if [ "${KITTARGET}" = "kitdll" ]; then
-    ## Remove built interpreters if we are building KitDLL --
-    ## they're just tiny stubs anyway
-    rm -f kit kit.exe
-  fi
+    cp "${KITTARGET_NAME}.new" "${KITTARGET_NAME}"
+    rm -f "${KITTARGET_NAME}.new"
+
+    # Cleanup
+    if [ "${KITTARGET}" = "kitdll" ]; then
+      ## Remove built interpreters if we are building KitDLL --
+      ## they're just tiny stubs anyway
+      rm -f kit kit.exe
+    fi
 
   exit 0
 ) || exit 1

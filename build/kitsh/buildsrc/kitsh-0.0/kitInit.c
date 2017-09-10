@@ -1,4 +1,4 @@
-/* 
+/*
  * tclAppInit.c --
  *
  *  Provides a default version of the main program and Tcl_AppInit
@@ -122,7 +122,7 @@ char *tclExecutableName;
  * interpreter.  It should mount up the VFS and make everything ready for
  * that interpreter to do its job.
  */
-static char *preInitCmd = 
+static char *preInitCmd =
 #if defined(_WIN32_WCE) && !defined(TCLKIT_DLL)
 /* silly hack to get wince port to launch, some sort of std{in,out,err} problem */
 "open /kitout.txt a; open /kitout.txt a; open /kitout.txt a\n"
@@ -259,7 +259,7 @@ static void FindAndSetExecName(Tcl_Interp *interp) {
 #ifdef HAVE_ACCEPTABLE_DLADDR
 	Dl_info syminfo;
 	int dladdr_ret;
-#endif /* HAVE_ACCEPTABLE_DLADDR */ 
+#endif /* HAVE_ACCEPTABLE_DLADDR */
 
 #ifdef HAVE_READLINK
 	if (Tcl_GetNameOfExecutable() == NULL) {
@@ -344,7 +344,7 @@ static void _Tclkit_Generic_Init(void) {
 #endif
 #ifdef KIT_INCLUDES_PWB
 	Tcl_StaticPackage(0, "pwb", Pwb_Init, NULL);
-#endif 
+#endif
 	Tcl_StaticPackage(0, "rechan", Rechan_Init, NULL);
 	Tcl_StaticPackage(0, "vfs", Vfs_Init, NULL);
 #ifdef KIT_INCLUDES_ZLIB
